@@ -1,0 +1,85 @@
+packages:
+  common: !include common.yaml
+
+# Pilot wire (fil pilote 6 ordres) signals and wiring: knowledge/fil-pilote.md
+# Relay at rest (NC contact closed) = full 230 V = Eco: a dead or unpowered board leaves the towel rail in Eco
+output:
+  - platform: gpio
+    id: optotriac_control
+    pin: GPIO14
+  - platform: gpio
+    id: positive_half_wave
+    pin: GPIO5
+  - platform: gpio
+    id: negative_half_wave
+    pin: GPIO4
+
+select:
+  - platform: template
+    id: pilot_order
+    name: Pilot wire order
+    icon: mdi:radiator
+    optimistic: true
+    restore_value: true
+    initial_option: Eco
+    options:
+      - Comfort
+      - Comfort -1
+      - Comfort -2
+      - Eco
+      - Frost protection
+      - "Off"
+    on_value:
+      - script.execute:
+          id: apply_order
+          order: !lambda return i;
+
+# Failsafe: without Home Assistant for 30 min, fall back to Eco
+api:
+  reboot_timeout: 0s
+  on_client_connected:
+    - script.stop: failsafe
+  on_client_disconnected:
+    - script.execute: failsafe
+
+esphome:
+  on_boot:
+    - script.execute: failsafe
+
+script:
+  - id: apply_order
+    mode: restart
+    parameters:
+      order: int
+    then:
+      - lambda: |-
+          // Index of pilot_order options -> {positive, negative} half-wave; Eco comes from the relay at rest
+          static const bool HALF_WAVES[][2] = {
+              {false, false}, {false, false}, {false, false},
+              {false, false}, {false, true}, {true, false}};
+          static const int ECO = 3;
+          id(optotriac_control).set_state(order != ECO);
+          id(positive_half_wave).set_state(HALF_WAVES[order][0]);
+          id(negative_half_wave).set_state(HALF_WAVES[order][1]);
+      # Comfort -1 / -2: full 230 V for 3 s / 7 s in every 300 s cycle
+      - while:
+          condition:
+            lambda: return order == 1 || order == 2;
+          then:
+            - output.turn_on: positive_half_wave
+            - output.turn_on: negative_half_wave
+            - delay: !lambda "return order == 1 ? 3000 : 7000;"
+            - output.turn_off: positive_half_wave
+            - output.turn_off: negative_half_wave
+            - delay: !lambda "return order == 1 ? 297000 : 293000;"
+
+  - id: failsafe
+    mode: single
+    then:
+      - delay: 30min
+      - logger.log:
+          level: WARN
+          format: "Home Assistant unreachable for 30 min, restoring 'Eco'"
+      - select.set:
+          id: pilot_order
+          option: Eco
