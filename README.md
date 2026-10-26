@@ -1,4 +1,4 @@
-# radiator-controller
+# sauter-marapi-esphome
 
 **Français** · [English](README.en.md)
 
@@ -28,7 +28,7 @@ Le module travaille sur le secteur, dans une salle de bains. Lire la section *S�
 
 ![Schéma](hardware/radiator-controller.svg)
 
-Ouvrir `hardware/radiator-controller.kicad_pro` dans KiCad, ou en ligne sur [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/radiator-controller/blob/main/hardware/radiator-controller.kicad_sch). Détails (signaux, nomenclature, sécurité) dans `knowledge/fil-pilote.md`. En bref :
+Ouvrir `hardware/radiator-controller.kicad_pro` dans KiCad, ou en ligne sur [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/radiator-controller.kicad_sch). Détails (signaux, nomenclature, sécurité) dans `knowledge/fil-pilote.md`. En bref :
 
 | D1 mini | Branché sur |
 |---|---|

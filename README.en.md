@@ -1,4 +1,4 @@
-# radiator-controller
+# sauter-marapi-esphome
 
 [Français](README.md) · **English**
 
@@ -42,7 +42,7 @@ On the radiator, select the **Programme Inactif** mode so that it obeys the pilo
 
 ![Schematic](hardware/radiator-controller.svg)
 
-Open `hardware/radiator-controller.kicad_pro` in KiCad, or online with [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/radiator-controller/blob/main/hardware/radiator-controller.kicad_sch). In short:
+Open `hardware/radiator-controller.kicad_pro` in KiCad, or online with [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/radiator-controller.kicad_sch). In short:
 
 | D1 mini | Connected to |
 |---|---|
