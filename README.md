@@ -1,13 +1,13 @@
 # radiator-controller
 
+**Français** · [English](README.en.md)
+
 Module DIY qui pilote le sèche-serviettes **Sauter Marapi tactile 1750 W** (anthracite) depuis Home Assistant, par son **fil pilote 6 ordres** (Confort, Confort −1, Confort −2, Éco, Hors-gel, Arrêt).
 
 Firmware ESPHome sur un Wemos D1 mini (ESP8266), deux optotriacs MOC3043 + diodes, un relais de repli en Éco, alimenté en 230 V par l'arrivée murale du sèche-serviettes.
 
 > [!WARNING]
 > **Projet en phase d'étude.** Le module complémentaire (schéma, circuit imprimé, firmware) n'a encore été ni fabriqué ni testé : ses informations sont **théoriques**. Seules les données du fabricant (notice, signaux du fil pilote) et les photos de la carte d'origine sont des faits ; les pistes de rétro-ingénierie (touche Boost, liaison interne) sont des hypothèses. À vérifier avant toute réalisation.
-
-*English: DIY ESPHome / Home Assistant controller for the Sauter Marapi tactile electric towel radiator (fan heater, 1750 W), driving its French "fil pilote" (6-order pilot wire) input, with notes on reverse engineering its control board (STM32F091, capacitive touch keys, boost button). Work in progress, untested.*
 
 **Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur fil pilote, Groupe Atlantic, ESPHome, Home Assistant, domotique, ESP8266, MOC3043, carte `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, touche Boost, liaison Linap, Err 10.
 
