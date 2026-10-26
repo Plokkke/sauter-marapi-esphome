@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "radiator-controller")(type "KiCad")(uri "${KIPRJMOD}/radiator-controller.kicad_sym")(options "")(descr "Project symbols"))
+)

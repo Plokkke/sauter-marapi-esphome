@@ -1,0 +1,12 @@
+(version 1)
+
+# 230 V (connected or floating pins on the mains side) to low voltage: 3 mm through air, 6 mm along the board
+(rule "mains_to_low_voltage"
+  (constraint clearance (min 3mm))
+  (constraint creepage (min 6mm))
+  (condition "(A.hasNetclass('Mains') || A.hasNetclass('MainsNC')) && !B.hasNetclass('Mains') && !B.hasNetclass('MainsNC') && B.Type != 'Hole'"))
+
+# Between 230 V conductors; terminal block J1 keeps its own rated 5.08 mm pitch
+(rule "mains_between_conductors"
+  (constraint clearance (min 2.5mm))
+  (condition "A.hasNetclass('Mains') && B.hasNetclass('Mains') && A.NetName != B.NetName && !(A.memberOfFootprint('J1') && B.memberOfFootprint('J1'))"))
