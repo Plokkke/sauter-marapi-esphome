@@ -1,0 +1,43 @@
+# Shared by every discovery firmware: Wemos D1 mini, local web page for the tests, notes and heartbeat in the logs.
+esp8266:
+  board: d1_mini
+
+logger:
+  logs:
+    # Web page entities refresh often: keep them out of the capture
+    text_sensor: WARN
+
+api:
+  # No Home Assistant behind it: never reboot for lack of an API client
+  reboot_timeout: 0s
+
+# Control page, from a phone or the Mac: http://<name>.local
+web_server:
+  port: 80
+  version: 3
+  local: true
+  log: false
+
+# Free text logged in the same stream as the frames, as a marker for the analysis
+text:
+  - platform: template
+    name: Note
+    mode: text
+    max_length: 60
+    optimistic: true
+    on_value:
+      - logger.log:
+          level: INFO
+          tag: action
+          format: "note: %s"
+          args: ["x.c_str()"]
+
+# Proves the logs flow and checks the wiring: on the bus, DATA idles high
+interval:
+  - interval: 10s
+    then:
+      - logger.log:
+          level: INFO
+          tag: heartbeat
+          format: "uptime %u s, DATA %s"
+          args: ["millis() / 1000", 'digitalRead(4) ? "high (idle)" : "low"']

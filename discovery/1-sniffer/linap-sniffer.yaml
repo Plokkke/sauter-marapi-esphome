@@ -1,0 +1,102 @@
+# Stage 1, listen: a Wemos D1 mini floating at the bus potential, powered by a floating lab supply,
+# reachable only over Wi-Fi. Wiring and safety: ../linap-bench.kicad_sch. Procedure: discovery/README.md.
+# Flash over USB BEFORE wiring it to the bus; never plug USB while it is wired to the bus (mains potential).
+packages:
+  network: !include {file: ../../firmware/network.yaml, vars: {fallback_ap_ssid: "Linap-Sniffer"}}
+  hotspot: !include ../../firmware/hotspot-wifi.yaml
+  bench: !include ../linap-bench.yaml
+
+esphome:
+  name: linap-sniffer
+  friendly_name: Linap sniffer
+  includes:
+    - linap-sniffer-steps.h
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: show_next_step
+
+# Logs the duration of every level of DATA, frame by frame: positive = low (mark), negative = high (space), in µs.
+# The bus idles high, so the pin is inverted to make the start bit a mark. Decoded by discovery/decode.py.
+remote_receiver:
+  pin:
+    number: GPIO4 # D2, through the 10 k / 15 k divider (5.2 V bus -> 3.1 V)
+    inverted: true
+  dump: raw
+  # 10 ms of high level ends a frame: longer than a byte at 1200 baud
+  idle: 10ms
+  # Pulses below 4 µs are noise: enough for a bus up to ~100 kbit/s
+  filter: 4us
+  buffer_size: 8kb
+
+# Guided capture, from a phone: http://linap-sniffer.local. The page shows the next radiator action (steps in
+# linap-sniffer-steps.h); "Go" logs it as a marker in the same stream as the frames, then counts down the wait.
+# decode.py splits the capture by these markers. "Note" logs free text the same way.
+globals:
+  - id: capture_step
+    type: int
+    initial_value: "0"
+  - id: capture_wait
+    type: int
+    initial_value: "0"
+
+text_sensor:
+  - platform: template
+    id: instruction
+    name: Instruction
+
+button:
+  - platform: template
+    name: "Go: log the step, then do it"
+    on_press:
+      - if:
+          condition:
+            lambda: return !id(run_step).is_running() && id(capture_step) < CAPTURE_STEP_COUNT;
+          then:
+            - script.execute: run_step
+  - platform: template
+    name: Skip this step
+    on_press:
+      - script.stop: run_step
+      - lambda: |-
+          if (id(capture_step) < CAPTURE_STEP_COUNT) {
+            ESP_LOGI("action", "skipped step %d: %s", id(capture_step) + 1, CAPTURE_STEPS[id(capture_step)].label);
+            id(capture_step)++;
+          }
+      - script.execute: show_next_step
+  - platform: template
+    name: Restart from step 1
+    on_press:
+      - script.stop: run_step
+      - lambda: id(capture_step) = 0;
+      - script.execute: show_next_step
+
+script:
+  - id: show_next_step
+    then:
+      - lambda: |-
+          const int step = id(capture_step);
+          if (step >= CAPTURE_STEP_COUNT) {
+            id(instruction).publish_state("Sequence finished: tell Claude");
+            return;
+          }
+          id(instruction).publish_state(
+              str_sprintf("READY - step %d/%d: %s. Press Go, then do it", step + 1, CAPTURE_STEP_COUNT,
+                          CAPTURE_STEPS[step].label));
+  - id: run_step
+    then:
+      - lambda: |-
+          const CaptureStep &step = CAPTURE_STEPS[id(capture_step)];
+          ESP_LOGI("action", "step %d: %s", id(capture_step) + 1, step.label);
+          id(capture_wait) = step.wait_s;
+      - while:
+          condition:
+            lambda: return id(capture_wait) > 0;
+          then:
+            - lambda: |-
+                id(instruction).publish_state(str_sprintf("DO NOW: %s - then hands off, %d s left",
+                                                          CAPTURE_STEPS[id(capture_step)].label, id(capture_wait)));
+                id(capture_wait)--;
+            - delay: 1s
+      - lambda: id(capture_step)++;
+      - script.execute: show_next_step

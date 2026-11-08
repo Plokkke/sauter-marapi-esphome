@@ -18,6 +18,7 @@ Firmware ESPHome sur un Wemos D1 mini (ESP8266), deux optotriacs MOC3043 + diode
 | `firmware/` | configuration ESPHome : `common.yaml` (Wi-Fi, API, OTA, LED, diagnostic), `controlleur-seche-serviettes.yaml` (fil pilote), `secrets.example.yaml` |
 | `hardware/` | KiCad 10 : schéma (`.kicad_sch`, rendu `.svg`), circuit imprimé (`.kicad_pcb`, rendus `-top.png` / `-bottom.png`), modèle 3D `radiator-controller.step` pour le boîtier (Fusion 360), symbole et empreinte du D1 mini, règles d'isolement (`.kicad_dru`) |
 | `enclosure/` | boîtier (à venir) |
+| `discovery/` | rétro-ingénierie du bus Linap : banc d'écoute (firmware ESPHome `1-sniffer/`, schéma KiCad `linap-bench.kicad_sch`), décodeur, procédure et évolution du montage (`README.md`) |
 | `knowledge/` | `architecture.md` (rôles, contrat, sécurité), `fil-pilote.md` (signaux, schéma, nomenclature), `backlog.md`, notice Sauter (`manuals/`) |
 
 ## ⚠️ 230 V

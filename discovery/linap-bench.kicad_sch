@@ -1,0 +1,956 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "03f46758-cf16-4370-8496-56efc56ff68c")
+	(paper "A3")
+	(title_block (title "Linap bench - Wemos D1 mini on the Linap bus") (date "2026-11-07") (rev "1") (company "Plokkke") (comment 1 "Sauter Marapi tactile - Linap bus discovery") (comment 2 "Firmwares: discovery/<stage>/*.yaml - procedure and revisions: discovery/README.md"))
+	(lib_symbols
+	(symbol "linap-bench:WEMOS_D1_mini" (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "U" (at 0 16.51 0) (effects (font (size 1.27 1.27)))) (property "Value" "WEMOS_D1_mini" (at 0 -16.51 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "RF_Module:WEMOS_D1_mini_light" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "https://www.wemos.cc/en/latest/d1/d1_mini.html" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Wemos D1 mini (ESP8266), pins in their physical place, top view, USB down" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes))) (symbol "WEMOS_D1_mini_0_1" (rectangle (start -12.7 13.97) (end 12.7 -13.97) (stroke (width 0.254) (type default)) (fill (type background))) (text "ANTENNA" (at 0 11.43 0) (effects (font (size 1.27 1.27)))) (text "USB" (at 0 -11.43 0) (effects (font (size 1.27 1.27))))) (symbol "WEMOS_D1_mini_1_1" (pin input line (at -15.24 8.89 0) (length 2.54) (name "RST" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin input line (at -15.24 6.35 0) (length 2.54) (name "A0" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at -15.24 3.81 0) (length 2.54) (name "D0/GPIO16" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at -15.24 1.27 0) (length 2.54) (name "D5/GPIO14" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at -15.24 -1.27 0) (length 2.54) (name "D6/GPIO12" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at -15.24 -3.81 0) (length 2.54) (name "D7/GPIO13" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at -15.24 -6.35 0) (length 2.54) (name "D8/GPIO15" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27))))) (pin power_out line (at -15.24 -8.89 0) (length 2.54) (name "3V3" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 8.89 180) (length 2.54) (name "TX/GPIO1" (effects (font (size 1.27 1.27)))) (number "16" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 6.35 180) (length 2.54) (name "RX/GPIO3" (effects (font (size 1.27 1.27)))) (number "15" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 3.81 180) (length 2.54) (name "D1/GPIO5" (effects (font (size 1.27 1.27)))) (number "14" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 1.27 180) (length 2.54) (name "D2/GPIO4" (effects (font (size 1.27 1.27)))) (number "13" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -1.27 180) (length 2.54) (name "D3/GPIO0" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -3.81 180) (length 2.54) (name "D4/GPIO2" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27))))) (pin power_in line (at 15.24 -6.35 180) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27))))) (pin power_in line (at 15.24 -8.89 180) (length 2.54) (name "5V" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27)))))))
+		(symbol "Device:R"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "R"
+				(at 2.032 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "R"
+				(at 0 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at -1.778 0 90)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Resistor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "R_0_1"
+				(rectangle
+					(start -1.016 -2.54)
+					(end 1.016 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "R_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)		(symbol "Jumper:Jumper_2_Open"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "JP"
+				(at 0 2.794 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Jumper_2_Open"
+				(at 0 -2.286 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Jumper, 2-pole, open"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "Jumper SPST"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "Jumper* TestPoint*2Pads* TestPoint*Bridge*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Jumper_2_Open_0_0"
+				(circle
+					(center -2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 2.032 0)
+					(radius 0.508)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Jumper_2_Open_0_1"
+				(arc
+					(start -1.524 1.27)
+					(mid 0 1.778)
+					(end 1.524 1.27)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Jumper_2_Open_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "B"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)		(symbol "Connector_Generic:Conn_01x02"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "J"
+				(at 0 2.54 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Conn_01x02"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "connector"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "Connector*:*_1x??_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Conn_01x02_1_1"
+				(rectangle
+					(start -1.27 1.27)
+					(end 1.27 -3.81)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(rectangle
+					(start -1.27 0.127)
+					(end 0 -0.127)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -1.27 -2.413)
+					(end 0 -2.667)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 3.81)
+					(name "Pin_1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 3.81)
+					(name "Pin_2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)		(symbol "Connector_Generic:Conn_01x03"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "J"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Conn_01x03"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "connector"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "Connector*:*_1x??_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Conn_01x03_1_1"
+				(rectangle
+					(start -1.27 3.81)
+					(end 1.27 -3.81)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(rectangle
+					(start -1.27 2.667)
+					(end 0 2.413)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -1.27 0.127)
+					(end 0 -0.127)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -1.27 -2.413)
+					(end 0 -2.667)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 2.54 0)
+					(length 3.81)
+					(name "Pin_1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 3.81)
+					(name "Pin_2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 3.81)
+					(name "Pin_3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)		(symbol "power:GND"
+			(power global)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#PWR"
+				(at 0 -6.35 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "GND"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "global power"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "GND_0_1"
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "GND_1_1"
+				(pin power_in line
+					(at 0 0 270)
+					(length 0)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)		(symbol "power:PWR_FLAG"
+			(power global)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#FLG"
+				(at 0 1.905 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "PWR_FLAG"
+				(at 0 3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Special symbol for telling ERC where power comes from"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "flag power"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "PWR_FLAG_0_0"
+				(pin power_out line
+					(at 0 0 90)
+					(length 0)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "PWR_FLAG_0_1"
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)	)
+	(symbol (lib_id "linap-bench:WEMOS_D1_mini") (at 114.3 95.25 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "8ff9dc2e-ea65-438c-9874-5f5faadaac22") (property "Reference" "U1" (at 114.3 78.74 0) (effects (font (size 1.27 1.27)))) (property "Value" "Wemos D1 mini" (at 114.3 111.76 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "RF_Module:WEMOS_D1_mini_light" (at 114.3 95.25 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 114.3 95.25 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 114.3 95.25 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "a6a517b9-3b0e-453c-a3c9-1899c1397787")) (pin "2" (uuid "700c4ed8-d12b-4ef7-8ed0-6db511551a03")) (pin "3" (uuid "5b8d5c9f-6cd3-439b-8f50-c8c647a58708")) (pin "4" (uuid "9145fc86-c993-43e9-aa37-26d3724ee9db")) (pin "5" (uuid "739edcd2-1e18-4a49-ab89-45a7093879f9")) (pin "6" (uuid "a3080220-4715-423b-9c0f-708c70df2b41")) (pin "7" (uuid "97af92e7-0a23-4c49-add2-e2a84e15d96c")) (pin "8" (uuid "f0948d96-f5df-4796-bcec-6e6f76ac299a")) (pin "16" (uuid "3e11143c-e340-4437-8047-3dd6eec4d0c2")) (pin "15" (uuid "eefb023f-877c-455d-b39c-48aafad1f361")) (pin "14" (uuid "4cc306cb-dfd4-4039-a457-b81a84a45861")) (pin "13" (uuid "20e5ab28-06da-49ee-9938-b02ab38b19ca")) (pin "12" (uuid "ef19ae70-46c6-492b-9b26-84c807535abf")) (pin "11" (uuid "e85ea595-1b5b-4588-959d-87178ac26093")) (pin "10" (uuid "fad54e89-4134-4b60-9ea3-8519bf6455e8")) (pin "9" (uuid "8450d11d-4831-4971-bc5b-60a1e692e053")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "U1") (unit 1)))))
+	(no_connect (at 99.06 86.36) (uuid "eeeec2c7-dbcc-486e-88c4-bf86fd736dcf"))
+	(no_connect (at 99.06 88.9) (uuid "4fa38c88-4b98-42e3-b855-d5963348a9c6"))
+	(no_connect (at 99.06 91.44) (uuid "8f154590-6d55-45a6-addb-85e7ad31ea9f"))
+	(no_connect (at 99.06 93.98) (uuid "0384a44e-248c-4b81-ab98-0d9f2bb314a8"))
+	(no_connect (at 99.06 96.52) (uuid "1d77f2e1-3351-441d-96ce-4d894175222e"))
+	(no_connect (at 99.06 99.06) (uuid "0084663d-af19-43ff-bc08-f8139d9103bb"))
+	(no_connect (at 99.06 101.6) (uuid "65b7f29a-4c24-4b92-87bd-63e5ed4a1cca"))
+	(no_connect (at 99.06 104.14) (uuid "f77ec55b-cc50-4981-aa0a-d55dd0089bca"))
+	(no_connect (at 129.54 86.36) (uuid "d281e9b7-73c2-4101-816f-f527b96e7470"))
+	(no_connect (at 129.54 88.9) (uuid "7d6b53d2-fa22-476e-8a1d-8eb8804b71fb"))
+	(no_connect (at 129.54 91.44) (uuid "403087d7-accb-4c24-9b8e-7d4a03ab7395"))
+	(no_connect (at 129.54 96.52) (uuid "372e90bd-4d05-49de-aeb9-07c51b721bba"))
+	(no_connect (at 129.54 99.06) (uuid "3052e1f6-9d17-41da-bab0-fd8be32a6f42"))
+	(wire (pts (xy 129.54 101.6) (xy 139.7 101.6)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "d2f973d8-202b-4ef0-9bb8-5bb340d02236"))
+	(wire (pts (xy 139.7 101.6) (xy 139.7 106.68)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "35ecfdd1-9f3d-4e04-90d6-2fb2333bfede"))
+	(wire (pts (xy 139.7 106.68) (xy 139.7 110.49)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "d06ddae9-c1ec-4d78-b635-d8eeeb214e74"))
+	(wire (pts (xy 139.7 110.49) (xy 142.24 110.49)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "feb494e0-341a-41d4-907a-033940ca1b8e"))
+	(wire (pts (xy 142.24 110.49) (xy 144.78 110.49)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "b2d40730-d86e-4638-883e-661570168424"))
+	(wire (pts (xy 129.54 104.14) (xy 134.62 104.14)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "3187a179-a89a-44d0-8d4f-8ac0598fb494"))
+	(wire (pts (xy 134.62 104.14) (xy 134.62 113.03)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "0f31480b-54a4-405f-aa3d-6dbe7405294b"))
+	(wire (pts (xy 134.62 113.03) (xy 139.7 113.03)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "ae409b17-0a32-44c5-91aa-c5fdef6f7e45"))
+	(wire (pts (xy 139.7 113.03) (xy 144.78 113.03)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "c70f9e2b-04b0-47e5-9e39-02deeaab2c93"))
+	(label "5V" (at 130.81 104.14 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "81157a11-5c80-45f6-8005-a5c9c6ff96d0"))
+	(junction (at 142.24 110.49) (diameter 0) (color 0 0 0 0) (uuid "057af080-1c39-420c-b1fa-3a696ed767a1"))
+	(junction (at 139.7 113.03) (diameter 0) (color 0 0 0 0) (uuid "1498adbe-dacd-4cc3-a9d8-4b3c7d39db67"))
+	(wire (pts (xy 139.7 106.68) (xy 137.16 106.68)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "3d6dcd12-916b-4ac0-9449-106c8a9b9cab"))
+	(junction (at 139.7 106.68) (diameter 0) (color 0 0 0 0) (uuid "7226e11b-bd0b-4a63-a84c-446b8daf89f8"))
+	(symbol (lib_id "power:GND") (at 137.16 106.68 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "2ab4c9a1-871b-4850-a75f-ba55a513c060") (property "Reference" "#PWR02" (at 137.16 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 137.16 111.76 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Footprint" "" (at 137.16 106.68 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 137.16 106.68 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 137.16 106.68 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "c82dad35-6e32-483e-9d3d-20101a6534ea")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "#PWR02") (unit 1)))))
+	(symbol (lib_id "power:PWR_FLAG") (at 142.24 110.49 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "ed06dff7-b475-4004-bebc-d06c680d7e61") (property "Reference" "#FLG03" (at 142.24 105.41 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "PWR_FLAG" (at 142.24 115.57 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Footprint" "" (at 142.24 110.49 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 142.24 110.49 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 142.24 110.49 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "665622b9-71ff-44f6-951d-86f3cf92d466")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "#FLG03") (unit 1)))))
+	(symbol (lib_id "power:PWR_FLAG") (at 139.7 113.03 180) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "70560270-5a2c-4444-a94c-c591ddff61fe") (property "Reference" "#FLG04" (at 139.7 107.95 180) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "PWR_FLAG" (at 139.7 118.11 180) (effects (font (size 1.27 1.27)) (hide yes))) (property "Footprint" "" (at 139.7 113.03 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 139.7 113.03 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 139.7 113.03 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "e9f7bc44-a531-4a43-ac38-9746e48ab292")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "#FLG04") (unit 1)))))
+	(symbol (lib_id "Connector_Generic:Conn_01x02") (at 149.86 110.49 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "5d4218bf-3c07-4fcb-b779-a15f7e4430e4") (property "Reference" "J1" (at 149.86 106.68 0) (effects (font (size 1.27 1.27)))) (property "Value" "Lab supply 5.0 V" (at 149.86 118.11 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 149.86 110.49 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 149.86 110.49 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 149.86 110.49 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "68adde6f-eb2c-486e-b450-d3794671c0f5")) (pin "2" (uuid "38e182db-8357-4b43-951d-91f1065eacd3")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "J1") (unit 1)))))
+	(text "1 = - (to G)" (exclude_from_sim no) (at 153.67 111.76 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "07acb4a3-5eca-4263-8d48-dd6206f3b57c"))
+	(text "2 = + (to 5V)" (exclude_from_sim no) (at 153.67 114.3 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "6bd17f75-2e75-448e-9310-94b40a8e36ed"))
+	(text "floating, 300 mA limit" (exclude_from_sim no) (at 142.24 121.92 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "ba85a140-74b6-45d1-9431-99e3f1a9a207"))
+	(wire (pts (xy 129.54 93.98) (xy 170.18 93.98)) (stroke (width 0.25) (type default) (color 0 150 70 1)) (uuid "d05dc734-3d46-41f9-87cc-affb0c8ca46c"))
+	(junction (at 170.18 93.98) (diameter 0) (color 0 0 0 0) (uuid "c3cfc151-6300-4078-84bf-57a731d2990a"))
+	(label "GPIO4" (at 132.08 93.98 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "7ce24d21-f9e9-402f-b83c-b7ffe4761184"))
+	(symbol (lib_id "Device:R") (at 170.18 101.60000000000001 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "6f073363-9986-40cc-9100-6f57e983fdda") (property "Reference" "R2" (at 172.72 100.33000000000001 0) (effects (font (size 1.27 1.27)))) (property "Value" "15k" (at 172.72 102.87 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 170.18 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 170.18 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 170.18 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "601247b1-19cb-45bb-946d-524c00ff1461")) (pin "2" (uuid "baf704de-5086-45a9-8f9a-dc9e699119b9")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "R2") (unit 1)))))
+	(wire (pts (xy 170.18 93.98) (xy 170.18 97.79)) (stroke (width 0.25) (type default) (color 0 150 70 1)) (uuid "14420b87-4011-4d63-bff0-976edbd6d603"))
+	(wire (pts (xy 170.18 105.41) (xy 170.18 107.95)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "2b4ac36c-e709-490d-bce8-545cca7e6147"))
+	(symbol (lib_id "power:GND") (at 170.18 107.95 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "49757c1d-e74e-479a-ac6f-cea5e2b14ecd") (property "Reference" "#PWR05" (at 170.18 102.87 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 170.18 113.03 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Footprint" "" (at 170.18 107.95 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 170.18 107.95 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 170.18 107.95 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "5b6c7e57-85a5-4504-a8b5-83002a8d5f78")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "#PWR05") (unit 1)))))
+	(symbol (lib_id "Device:R") (at 182.88 93.98 90) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "a36e3aa6-c8ec-416a-8bdb-f7c82080e89f") (property "Reference" "R1" (at 182.88 90.17 90) (effects (font (size 1.27 1.27)))) (property "Value" "10k" (at 182.88 97.79 90) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 182.88 93.98 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 182.88 93.98 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 182.88 93.98 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "e9338235-099c-4411-8238-b270b716625f")) (pin "2" (uuid "39cf551e-e1aa-48f7-aec1-6d8095e50784")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "R1") (unit 1)))))
+	(wire (pts (xy 170.18 93.98) (xy 179.07 93.98)) (stroke (width 0.25) (type default) (color 0 150 70 1)) (uuid "e156a5b8-43cd-41b8-ae01-ba2bf90f4e5b"))
+	(wire (pts (xy 186.69 93.98) (xy 231.14 93.97999999999999)) (stroke (width 0.25) (type default) (color 0 150 70 1)) (uuid "ab4e9077-9c6f-4637-9ec7-bf42c06ce035"))
+	(label "LINAP_DATA" (at 189.23000000000002 93.98 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "2a548140-5627-40cf-a9d9-b86b1d6bfd3b"))
+	(text "Divider: 5.2 V x 15k / 25k = 3.1 V on D2 (GPIO4)" (exclude_from_sim no) (at 140.97 83.82000000000001 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "40a2e91a-46ad-4a6d-b7c9-8c452ebd0ce3"))
+	(symbol (lib_id "Connector_Generic:Conn_01x03") (at 236.22 96.52 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "21323cce-6def-4041-affd-7cba1a3b1bb1") (property "Reference" "J2" (at 236.22 90.17 0) (effects (font (size 1.27 1.27)))) (property "Value" "Linap ribbon" (at 246.38 104.14 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 236.22 96.52 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 236.22 96.52 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 236.22 96.52 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "09e92048-20a5-49b1-bc0c-defd89e25ec8")) (pin "2" (uuid "5dc2e49b-4122-4841-91f8-0c43d508ae77")) (pin "3" (uuid "c4371bce-cfa3-4673-b7a8-a2c6a6356070")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "J2") (unit 1)))))
+	(text "1 white = DATA" (exclude_from_sim no) (at 238.76 95.24999999999999 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "ec929cc9-3a84-43d9-9743-13bd85f604f5"))
+	(text "2 red = VCC" (exclude_from_sim no) (at 238.76 97.78999999999999 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "52813584-1fae-4018-8e31-6ef24c7875c3"))
+	(text "3 black = GND" (exclude_from_sim no) (at 238.76 100.33 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "ec3483d5-c628-4b24-bace-909a48866b41"))
+	(wire (pts (xy 231.14 96.52) (xy 220.98 96.52)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "b1bd9815-18b7-4293-8050-d2ca04aa968e"))
+	(wire (pts (xy 220.98 96.52) (xy 220.98 101.6)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "25bfc8ec-12d3-49a6-aa71-1fcd75c94697"))
+	(symbol (lib_id "Jumper:Jumper_2_Open") (at 220.98 106.67999999999999 90) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no) (uuid "51d18372-7b64-468c-869b-7a0278022f28") (property "Reference" "JP1" (at 227.32999999999998 105.41 90) (effects (font (size 1.27 1.27)))) (property "Value" "VCC feed" (at 227.32999999999998 107.94999999999999 90) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 220.98 106.67999999999999 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 220.98 106.67999999999999 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 220.98 106.67999999999999 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "9ad919d0-d04d-470f-bbe4-425eff5de919")) (pin "2" (uuid "9bceb0b4-9c5c-4321-b0bc-104bd590b9d8")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "JP1") (unit 1)))))
+	(wire (pts (xy 220.98 111.75999999999999) (xy 220.98 114.3)) (stroke (width 0.25) (type default) (color 230 120 0 1)) (uuid "49edaa6e-840f-49bb-acb5-6ba82d9ca55a"))
+	(label "5V" (at 220.98 114.3 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "ae815622-d9f1-46a7-a593-e54356d20559"))
+	(wire (pts (xy 231.14 99.06) (xy 226.05999999999997 99.06)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "a007a50a-ee9a-4a45-85a6-b4e157966149"))
+	(wire (pts (xy 226.05999999999997 99.06) (xy 226.05999999999997 101.60000000000001)) (stroke (width 0.25) (type default) (color 90 90 90 1)) (uuid "9cbbe25c-e54f-4bc9-aa69-ef40cad5051d"))
+	(symbol (lib_id "power:GND") (at 226.05999999999997 101.60000000000001 0) (unit 1) (body_style 1) (exclude_from_sim no) (in_bom no) (on_board yes) (in_pos_files yes) (dnp no) (uuid "ba6d30f4-24e0-42e2-b1b9-d096b04e912d") (property "Reference" "#PWR01" (at 226.05999999999997 96.52000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Value" "GND" (at 226.05999999999997 106.68 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Footprint" "" (at 226.05999999999997 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "" (at 226.05999999999997 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "" (at 226.05999999999997 101.60000000000001 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "77f02a0c-fcc2-470e-a115-c644345b5c13")) (instances (project "linap-bench" (path "/03f46758-cf16-4370-8496-56efc56ff68c" (reference "#PWR01") (unit 1)))))
+	(rectangle (start 55.88 45.72) (end 287.02 175.26) (stroke (width 0.6) (type dash) (color 200 0 0 1)) (fill (type none)) (uuid "cac817b0-c34d-46e6-a414-227b475a3c9e"))
+	(text "ON THE RADIATOR, EVERYTHING INSIDE THE RED FRAME IS AT MAINS POTENTIAL" (exclude_from_sim no) (at 58.42 52.07 0) (effects (font (size 1.8 1.8) (bold yes) (color 200 0 0 1)) (justify left bottom)) (uuid "1d940ec4-88b0-4be1-b359-5efd0cd39f72"))
+	(text "Notes" (exclude_from_sim no) (at 58.42 137.16 0) (effects (font (size 1.27 1.27) (bold yes)) (justify left bottom)) (uuid "022c4896-aca4-4f91-b101-c481f58eb322"))
+	(text "Stage 1, sniffer: J2 taps the ribbon between both boards, on the radiator. Listens only. J1 powers, JP1 open." (exclude_from_sim no) (at 58.42 140.97 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f25dd817-f68a-4a74-aa37-3603e2ce3038"))
+	(text "JP1 stays open on the radiator. Closed, the D1 mini feeds the ribbon VCC: a board alone on the bench, no mains." (exclude_from_sim no) (at 58.42 144.78 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "cd0c1e54-1c82-4a7b-a7ab-d9a4d89a9c48"))
+	(text "1. Flash over USB BEFORE wiring, then unplug it for good: never USB while J2 reaches the power board." (exclude_from_sim no) (at 58.42 148.59 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4396271c-a9b1-4104-a2c5-6e3a5089e28a"))
+	(text "2. Lab supply output must float: no earth terminal, no link between - and earth. Set 5.0 V, limit 300 mA." (exclude_from_sim no) (at 58.42 152.4 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "af7dd406-c9e0-4210-a27f-0c8bc6197949"))
+	(text "3. Wire with the breaker OFF. Once powered, touch nothing: read and drive over Wi-Fi only." (exclude_from_sim no) (at 58.42 156.21 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "e90091a7-eeb2-44e7-bd68-41a80cbe1d54"))
+	(text "Revision 1 (2026-11-07): listen only." (exclude_from_sim no) (at 58.42 160.02 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "cd864234-5d60-4470-b2c0-ee6d0e717c24"))
+	(sheet_instances (path "/" (page "1")))
+	(embedded_fonts no)
+)

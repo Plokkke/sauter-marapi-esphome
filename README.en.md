@@ -18,6 +18,7 @@ ESPHome firmware on a Wemos D1 mini (ESP8266), two MOC3043 optotriacs + diodes, 
 | `firmware/` | ESPHome configuration: `common.yaml` (Wi-Fi, API, OTA, LED, diagnostics), `controlleur-seche-serviettes.yaml` (pilot wire), `secrets.example.yaml` |
 | `hardware/` | KiCad 10: schematic (`.kicad_sch`, `.svg` render), PCB (`.kicad_pcb`, `-top.png` / `-bottom.png` renders), 3D model `radiator-controller.step` for enclosure design, D1 mini symbol and footprint, isolation rules (`.kicad_dru`) |
 | `enclosure/` | enclosure (to come) |
+| `discovery/` | Linap bus reverse engineering: listening bench (ESPHome firmware `1-sniffer/`, KiCad schematic `linap-bench.kicad_sch`), decoder, procedure and bench revisions (`README.md`, in French) |
 | `knowledge/` | design notes, in French: `architecture.md` (roles, contract, safety), `fil-pilote.md` (signals, schematic, bill of materials), `backlog.md` (including control board reverse engineering), Sauter manual (`manuals/`) |
 
 ## ⚠️ Mains voltage

@@ -1,0 +1,12 @@
+# Phone hotspot first (ESP, Mac and phone side by side, strong signal), home Wi-Fi as fallback.
+# For the discovery firmwares; include after network.yaml, whose single network it replaces.
+wifi:
+  ssid: !remove
+  password: !remove
+  networks:
+    - ssid: !secret hotspot_ssid
+      password: !secret hotspot_password
+      priority: 2
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+      priority: 1

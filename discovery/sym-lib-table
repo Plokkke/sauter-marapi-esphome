@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "linap-bench")(type "KiCad")(uri "${KIPRJMOD}/linap-bench.kicad_sym")(options "")(descr "Wemos D1 mini drawn as the board"))
+)
