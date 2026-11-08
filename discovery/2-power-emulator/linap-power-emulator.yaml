@@ -1,0 +1,77 @@
+# Stage 2, fake power board, on the bench only: NO MAINS. The command board, alone, takes its 5 V from a
+# USB-powered Wemos D1 mini, which polls it like the power board does: http://linap-power-emulator.local.
+# Wiring: ../linap-bench.kicad_sch (JP1 closed). Procedure: discovery/README.md.
+packages:
+  network: !include {file: ../../firmware/network.yaml, vars: {fallback_ap_ssid: "Linap-Power-Emulator"}}
+  hotspot: !include ../../firmware/hotspot-wifi.yaml
+  bench: !include ../linap-bench.yaml
+  transmitter: !include ../linap-transmitter.yaml
+
+esphome:
+  name: linap-power-emulator
+  friendly_name: Linap power emulator
+  includes:
+    - power-board.h
+
+remote_receiver:
+  on_raw:
+    - lambda: |-
+        linap_bus.receive(x, [](const linap::Frame &frame, bool news) {
+          if (!news)
+            return;
+          const std::string text = linap::describe(frame);
+          ESP_LOGI("rx", "%s", text.c_str());
+          (frame[0] == 0x46 ? id(command_board) : id(other_frames))->publish_state(text);
+        });
+
+interval:
+  - interval: 95ms # 3 slots: one cycle every ~285 ms, as on the radiator
+    then:
+      - lambda: |-
+          if (!id(polling).state && !linap_bus.has_pending())
+            return;
+          const bool injected = linap_bus.has_pending();
+          const linap::Frame frame = power_board.next();
+          id(uart_bus).write_array(frame.data(), frame.size());
+          linap_bus.sent(frame);
+          if (injected)
+            ESP_LOGI("tx", "injected %s", linap::hex(frame).c_str());
+
+switch:
+  - platform: template
+    id: polling
+    name: Poll the command board
+    optimistic: true
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      - logger.log: {level: INFO, tag: action, format: "polling on"}
+    on_turn_off:
+      - logger.log: {level: INFO, tag: action, format: "polling off"}
+
+# State the power board reports in C7, at every cycle (names from linap-frames.h)
+select:
+  - platform: template
+    name: C7 state sent every cycle
+    optimistic: true
+    options: [normal, boost, heating, "off"]
+    initial_option: normal
+    on_value:
+      - lambda: |-
+          power_board.c7_state = linap::known(0xC7, x);
+          ESP_LOGI("action", "C7 state: %s", linap::describe(power_board.c7_state).c_str());
+
+button:
+  - platform: template
+    name: "Send the boost ack once (C7 83 E0 98)"
+    on_press:
+      - lambda: |-
+          ESP_LOGI("action", "boost ack once");
+          linap_bus.inject(linap::known(0xC7, "boost"));
+
+text_sensor:
+  - platform: template
+    id: command_board
+    name: Command board says (46)
+  - platform: template
+    id: other_frames
+    name: Other frames heard

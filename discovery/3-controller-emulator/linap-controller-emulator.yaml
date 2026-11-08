@@ -1,0 +1,92 @@
+# Stage 3, fake command board, on the radiator: the real command board is unplugged and this Wemos D1 mini,
+# floating at mains potential on a floating lab supply, answers the power board: http://linap-controller-emulator.local.
+# Wiring and safety: ../linap-bench.kicad_sch (JP1 open). Procedure: discovery/README.md.
+# Flash over USB BEFORE wiring it to the bus; never plug USB while it is wired to the bus (mains potential).
+packages:
+  network: !include {file: ../../firmware/network.yaml, vars: {fallback_ap_ssid: "Linap-Controller-Emulator"}}
+  hotspot: !include ../../firmware/hotspot-wifi.yaml
+  bench: !include ../linap-bench.yaml
+  transmitter: !include ../linap-transmitter.yaml
+
+esphome:
+  name: linap-controller-emulator
+  friendly_name: Linap controller emulator
+  includes:
+    - command-board.h
+
+remote_receiver:
+  on_raw:
+    - lambda: |-
+        linap_bus.receive(x, [](const linap::Frame &frame, bool news) {
+          if (id(answering).state) {
+            const linap::Frame reply = command_board.reply_to(frame, millis());
+            if (!reply.empty()) {
+              id(uart_bus).write_array(reply.data(), reply.size());
+              linap_bus.sent(reply);
+            }
+          }
+          if (!news)
+            return;
+          const std::string text = linap::describe(frame);
+          ESP_LOGI("rx", "%s", text.c_str());
+          (frame[0] == 0xC7 ? id(power_state) : frame[0] == 0x73 ? id(frame_73) : id(other_frames))
+              ->publish_state(text);
+        });
+
+switch:
+  - platform: template
+    id: answering
+    name: Answer the power board
+    optimistic: true
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      - logger.log: {level: INFO, tag: action, format: "answering on"}
+    on_turn_off:
+      - logger.log: {level: INFO, tag: action, format: "answering off"}
+  - platform: template
+    name: Heat demand (46 bit 7 = 0)
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - lambda: command_board.heat_demand = true;
+      - logger.log: {level: INFO, tag: action, format: "heat demand on"}
+    on_turn_off:
+      - lambda: command_board.heat_demand = false;
+      - logger.log: {level: INFO, tag: action, format: "heat demand off"}
+
+select:
+  - platform: template
+    name: Mode sent in 46
+    optimistic: true
+    options: [normal, boost, "off"]
+    initial_option: normal
+    on_value:
+      - lambda: |-
+          command_board.mode = x;
+          ESP_LOGI("action", "mode %s: %s", x.c_str(), linap::describe(command_board.state()).c_str());
+
+number:
+  - platform: template
+    name: Setpoint
+    optimistic: true
+    min_value: 5
+    max_value: 30
+    step: 0.5
+    initial_value: 14.5
+    unit_of_measurement: °C
+    mode: box
+    on_value:
+      - lambda: |-
+          command_board.setpoint = x;
+          ESP_LOGI("action", "setpoint %.1f: %s", x, linap::describe(command_board.state()).c_str());
+
+text_sensor:
+  - platform: template
+    id: power_state
+    name: Power board state (C7)
+  - platform: template
+    id: frame_73
+    name: Frame 73 (temperature?)
+  - platform: template
+    id: other_frames
+    name: Other frames heard

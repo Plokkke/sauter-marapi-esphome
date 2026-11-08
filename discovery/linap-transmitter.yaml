@@ -1,0 +1,52 @@
+# Shared by the emulators: send frames on DATA through Q1 (D8), hear everything back on D2.
+# The including firmware adds remote_receiver.on_raw, which feeds linap_bus (linap-frames.h).
+esphome:
+  includes:
+    - ../linap-frames.h
+
+# The logs leave UART0 (USB) for UART1 (GPIO2), so that UART0, swapped to GPIO15/GPIO13, sends the frames in
+# hardware: exact timing, no bit-banging with interrupts off. Logs then reach the Mac over Wi-Fi only.
+logger:
+  hardware_uart: UART1
+
+uart:
+  id: uart_bus
+  # D8, through R6 to the base of Q1, whose collector pulls DATA low: inverted
+  tx_pin:
+    number: GPIO15
+    inverted: true
+  # D7, left unconnected: the UART swap needs it, the frames are read by remote_receiver on D2
+  rx_pin: GPIO13
+  baud_rate: 9600
+
+# Everything on DATA, our own frames included (counted as echo), decoded on the ESP
+remote_receiver:
+  pin:
+    number: GPIO4 # D2, through the 10 k / 15 k divider (5.2 V bus -> 3.1 V)
+    inverted: true
+  # The longest high level inside a frame is 1 ms: 3 ms of idle splits our frame from the reply
+  idle: 3ms
+  filter: 4us
+  buffer_size: 2kb
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          ESP_LOGI("bus", "last 10 s: %s", linap_bus.report().c_str());
+
+text:
+  - platform: template
+    name: "Send a frame once (4 hex bytes, checksum added)"
+    mode: text
+    max_length: 20
+    optimistic: true
+    on_value:
+      - lambda: |-
+          const linap::Frame frame = linap::parse(x);
+          if (frame.empty()) {
+            ESP_LOGW("action", "not 4 hex bytes: %s", x.c_str());
+            return;
+          }
+          ESP_LOGI("action", "send once: %s", linap::hex(frame).c_str());
+          linap_bus.inject(frame);

@@ -8,23 +8,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 NAME = "linap-bench"
-REVISION, DATE = "1", "2026-11-07"
+REVISION, DATE = "2", "2026-11-08"
 KICAD_SYMBOLS = Path("/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols")
 FONT = "(effects (font (size 1.27 1.27)))"
 HIDDEN = "(effects (font (size 1.27 1.27)) (hide yes))"
 RED, GREY, GREEN, ORANGE = "(color 200 0 0 1)", "(color 90 90 90 1)", "(color 0 150 70 1)", "(color 230 120 0 1)"
-LIBS = (("Device", "R"), ("Jumper", "Jumper_2_Open"),
+LIBS = (("Device", "R"), ("Device", "Q_NPN"), ("Jumper", "Jumper_2_Open"),
         ("Connector_Generic", "Conn_01x02"), ("Connector_Generic", "Conn_01x03"), ("power", "GND"),
         ("power", "PWR_FLAG"))
 
-FRAME_TITLE = "ON THE RADIATOR, EVERYTHING INSIDE THE RED FRAME IS AT MAINS POTENTIAL"
+FRAME_TITLE = "ON THE RADIATOR (STAGES 1 AND 3), EVERYTHING INSIDE THE RED FRAME IS AT MAINS POTENTIAL"
 NOTES = [
-    "Stage 1, sniffer: J2 taps the ribbon between both boards, on the radiator. Listens only. J1 powers, JP1 open.",
-    "JP1 stays open on the radiator. Closed, the D1 mini feeds the ribbon VCC: a board alone on the bench, no mains.",
+    "Stage 1, sniffer (radiator): J2 taps the ribbon between both boards. J1 powers, JP1 open. Q1 stays off.",
+    "Stage 2, power emulator (bench, NO MAINS): J2 to the command board alone. USB powers, J1 unplugged, JP1 closed.",
+    "Stage 3, controller emulator (radiator): J2 to the power board alone. J1 powers, JP1 open.",
+    "R7 (not fitted): stage 3 only, if the heartbeat log reads DATA low at idle.",
     "1. Flash over USB BEFORE wiring, then unplug it for good: never USB while J2 reaches the power board.",
     "2. Lab supply output must float: no earth terminal, no link between - and earth. Set 5.0 V, limit 300 mA.",
     "3. Wire with the breaker OFF. Once powered, touch nothing: read and drive over Wi-Fi only.",
-    "Revision 1 (2026-11-07): listen only.",
+    "Revision 1 (2026-11-07): listen only. Revision 2 (2026-11-08): Q1 + R6 transmit from D8, R7 optional pull-up.",
 ]
 
 U1 = (114.3, 95.25)
@@ -38,7 +40,7 @@ D1_RIGHT = (("TX/GPIO1", "16", "bidirectional"), ("RX/GPIO3", "15", "bidirection
             ("5V", "9", "power_in"))
 D1_SIDES = ((D1_LEFT, -15.24, 0), (D1_RIGHT, 15.24, 180))
 NODE_X, J2 = 170.18, (236.22, 96.52)
-VCC_X = 220.98
+DATA_X, R7_X, VCC_X = 205.74, 215.9, 220.98
 
 
 def u():
@@ -181,6 +183,32 @@ def divider(sheet, data_end):
     ]
 
 
+def transmitter(sheet):
+    data_y = d1("D2")[1]
+    q1, d8 = (DATA_X - 2.54, data_y + 15.24), d1("D8")
+    base, r6 = (q1[0] - 5.08, q1[1]), (q1[0] - 11.43, q1[1])
+    return [
+        *wire([d8, (d8[0] - 12.7, d8[1])]), label("LINAP_TX", (d8[0] - 12.7, d8[1])),
+        *wire([(r6[0] - 3.81, q1[1]), (r6[0] - 16.51, q1[1])]), label("LINAP_TX", (r6[0] - 16.51, q1[1])),
+        sheet.resistor("R6", "10k", r6, horizontal=True), *wire([(r6[0] + 3.81, q1[1]), base]),
+        sheet.symbol("Device:Q_NPN", "Q1", "BC547", q1, ["B", "C", "E"],
+                     ref_at=(q1[0] + 6.35, q1[1] - 2.54), value_at=(q1[0] + 8.89, q1[1] + 1.27)),
+        *wire([(DATA_X, q1[1] - 5.08), (DATA_X, data_y)], GREEN), junction((DATA_X, data_y)),
+        *wire([(DATA_X, q1[1] + 5.08), (DATA_X, q1[1] + 7.62)], GREY), sheet.power("GND", (DATA_X, q1[1] + 7.62)),
+        text("TX: D8 high -> Q1 on -> DATA low (UART inverted)", (r6[0] - 15.24, q1[1] + 12.7)),
+    ]
+
+
+def pull_up(sheet):
+    data_y, r7 = d1("D2")[1], (R7_X, d1("D2")[1] + 3.81)
+    return [
+        sheet.resistor("R7", "4.7k", r7, horizontal=False, dnp=True,
+                       text_at=((R7_X - 5.08, r7[1] - 1.27), (R7_X - 5.08, r7[1] + 1.27))),
+        junction((R7_X, data_y)), *wire([(R7_X, r7[1] + 3.81), (VCC_X, r7[1] + 3.81)], ORANGE),
+        junction((VCC_X, r7[1] + 3.81)),
+    ]
+
+
 def ribbon(sheet):
     pin_x = J2[0] - 5.08
     data, vcc, ground = (pin_x, J2[1] - 2.54), (pin_x, J2[1]), (pin_x, J2[1] + 2.54)
@@ -208,7 +236,9 @@ def frame():
 
 def items(sheet):
     ribbon_items, data_pin = ribbon(sheet)
-    return [*module(sheet, {"D2", "5V", "GND"}), *supply(sheet), *divider(sheet, [data_pin]), *ribbon_items, *frame()]
+    data_end = [(DATA_X, data_pin[1]), (R7_X, data_pin[1]), data_pin]
+    return [*module(sheet, {"D2", "D8", "5V", "GND"}), *supply(sheet), *divider(sheet, data_end),
+            *transmitter(sheet), *pull_up(sheet), *ribbon_items, *frame()]
 
 
 def main():
