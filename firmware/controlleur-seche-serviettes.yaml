@@ -6,13 +6,13 @@ packages:
 output:
   - platform: gpio
     id: optotriac_control
-    pin: GPIO14
+    pin: GPIO7
   - platform: gpio
     id: positive_half_wave
     pin: GPIO5
   - platform: gpio
     id: negative_half_wave
-    pin: GPIO4
+    pin: GPIO6
 
 select:
   - platform: template

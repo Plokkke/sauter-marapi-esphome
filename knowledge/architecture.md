@@ -28,3 +28,9 @@ L'ordre est restauré après une coupure de courant (`restore_value`). Les temp�
 
 - **DÉCIDÉ** : module alimenté par l'arrivée murale du sèche-serviettes (phase + neutre, en aval du différentiel 30 mA de la salle de bains), via un HLK-PM01 protégé par un fusible.
 - Le module s'intercale entre la boîte de raccordement murale et le câble de l'appareil : phase et neutre traversent, le fil noir sort du module.
+
+## Deux cartes
+
+- **DÉCIDÉ** : deux cartes en parallèle, même C3, même alimentation, bibliothèque commune (`hardware/lib/`).
+  - **Carte initiale** (`hardware/pilot-wire/`, `fil-pilote.md`) : fil pilote 6 ordres et appui simulé sur la touche Boost. Fonctionne sans rien connaître du radiateur.
+  - **Carte finale** (`hardware/linap/`, `linap.md`) : lecture et écriture du bus Linap interne, isolées. Sert d'abord à analyser les trames ; une fois le protocole connu, elle remplace la carte initiale : plus de fil pilote ni de touche simulée, et un vrai retour d'état (consigne, mode, Boost, température).

@@ -1,0 +1,116 @@
+(footprint "ESP32-C3_SuperMini_Outline"
+	(version 20260206)
+	(generator "radiator-controller")
+	(layer "F.Cu")
+	(descr "ESP32-C3 super mini (18 x 22 mm, USB-C overhangs 1.5 mm) plugged into two 1x8 sockets 15.24 mm apart; pins 1-8 (5V GND 3V3 GPIO4..0) at +x, 9-16 at -x, USB end first. Pins: first at 1.27 mm from the USB edge, 2.54 mm pitch")
+	(property "Reference" "REF**"
+		(at 0 12.5 0)
+		(layer "F.SilkS")
+		(uuid "b42694e0-7b02-46d5-a8b0-4c9497e3b552")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "ESP32-C3_SuperMini_Outline"
+		(at 0 -12.5 0)
+		(layer "F.Fab")
+		(uuid "9475ef8b-da44-41b4-a172-289a0217b36c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr board_only exclude_from_pos_files exclude_from_bom)
+	(fp_rect
+		(start -9.0 -11.0)
+		(end 9.0 11.0)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "635c9a2a-73a8-49b8-b012-660ef59208db")
+	)
+	(fp_rect
+		(start -4.5 -12.5)
+		(end 4.5 -11.0)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "3478816e-feaf-45d5-ad7a-db3b5f88ea14")
+	)
+	(fp_text user "USB"
+		(at 0 -9.5 0)
+		(layer "F.Fab")
+		(uuid "1b9e5ded-9633-4594-a4b3-67c65c39ff74")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "ANTENNA"
+		(at 0 10.0 0)
+		(layer "F.Fab")
+		(uuid "db4afc9d-795d-4b0b-8d13-cf1dc5c22c02")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "5V GND 3V3 IO4..0"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "b2e21822-e659-4096-a49b-32454212d2a9")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu" "B.Cu")
+		(uuid "9c620f01-4fe8-4b40-8f84-a3602ca6e1a1")
+		(name "antenna_keepout")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads not_allowed)
+			(copperpour not_allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts (xy -4.32 8.7) (xy 4.32 8.7) (xy 4.32 11.0) (xy -4.32 11.0))
+		)
+	)
+	(embedded_fonts no)
+)

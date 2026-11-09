@@ -1,0 +1,88 @@
+(footprint "RV_Disc_D9mm_W4.8mm_P5mm_Inline"
+	(version 20260206)
+	(generator "radiator-controller")
+	(layer "F.Cu")
+	(descr "Bourns MOV-07D431K disc varistor (LCSC C1528105), from the Bourns drawing: leads 0.6 mm at 5.0 +-0.8 mm, disc 9.0 mm max, 4.8 mm thick, 11 mm high")
+	(property "Reference" "REF**"
+		(at 0 3.9 0)
+		(layer "F.SilkS")
+		(uuid "bc034d64-bb45-4540-8800-0d3dbc5a05b0")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "RV_Disc_D9mm_W4.8mm_P5mm_Inline"
+		(at 0 -3.9 0)
+		(layer "F.Fab")
+		(uuid "e005abbc-b135-4c92-a96e-55ece9b99994")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(fp_rect
+		(start -2.0 -2.4)
+		(end 7.0 2.4)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "e57e7b06-1d6a-4a23-8596-7c248100ca97")
+	)
+	(fp_rect
+		(start -2.12 -2.52)
+		(end 7.12 2.52)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "2d627019-bf73-4ff4-9917-23b55f3130e1")
+	)
+	(fp_rect
+		(start -2.5 -2.9)
+		(end 7.5 2.9)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "c412ea07-f52c-4c2d-838a-5b22e4b5a757")
+	)
+	(pad "1" thru_hole rect
+		(at 0.0 0)
+		(size 1.8 1.8)
+		(drill 1.0)
+		(layers "*.Cu" "*.Mask")
+		(uuid "f7f5880c-5aeb-4254-8eb0-5364b33b5e26")
+	)
+	(pad "2" thru_hole circle
+		(at 5.0 0)
+		(size 1.8 1.8)
+		(drill 1.0)
+		(layers "*.Cu" "*.Mask")
+		(uuid "bae601eb-8c55-42de-98d4-c78bb083688d")
+	)
+	(embedded_fonts no)
+	(model "${KICAD10_3DMODEL_DIR}/Varistor.3dshapes/RV_Disc_D9mm_W4.8mm_P5mm.step"
+		(offset
+			(xyz 0 1.15 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)
