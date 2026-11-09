@@ -5,7 +5,7 @@ Comment le protocole du bus Linap a été trouvé, et les outils pour refaire ch
 | Étape | Dossier | Rôle de l'ESP | Où | État |
 |---|---|---|---|---|
 | 1 | [`1-sniffer/`](1-sniffer/) | écoute la nappe entre les deux cartes | radiateur | fait, protocole de base décodé |
-| 2 | [`2-power-emulator/`](2-power-emulator/) | joue la carte de puissance face à la carte de commande seule | bureau, sans secteur | en cours |
+| 2 | [`2-power-emulator/`](2-power-emulator/) | joue la carte de puissance face à la carte de commande seule | bureau, sans secteur | firmware prêt, en attente du transistor Q1 |
 | 3 | [`3-controller-emulator/`](3-controller-emulator/) | joue la carte de commande face à la carte de puissance seule | radiateur | à faire |
 
 Les résultats (format des trames, consigne, Boost…) sont dans `knowledge/linap.md` ; ce fichier décrit la méthode.
@@ -31,8 +31,8 @@ Schéma : [`linap-bench.kicad_sch`](linap-bench.kicad_sch), produit par [`genera
 |---|---|---|
 | U1 | Wemos D1 mini (ESP8266, 4 Mo) | écoute, émission, Wi-Fi |
 | R1, R2 | 10 kΩ et 15 kΩ | pont diviseur : DATA 5,2 V → 3,1 V sur D2 |
-| Q1, R6 | NPN (BC547, 2N2222, 2N3904…) et 10 kΩ de base | émission : D8 à l'état haut → DATA à l'état bas (étapes 2 et 3) |
-| R7 | 4,7 kΩ, non montée par défaut | rappel de DATA au fil rouge, si la carte de puissance seule ne le fait pas (étape 3) |
+| Q1, R6 | NPN en TO-92 (2N3904, 2N2222, BC547…) et 10 kΩ de base | émission : D8 à l'état haut → DATA à l'état bas (étapes 2 et 3). **Brochage variable** : E-B-C pour 2N3904 et 2N2222, C-B-E pour BC547 et BC337 (face plate vers soi, pattes en bas) ; vérifier en test de diode (≈ 0,6-0,7 V de la base vers chacune des deux autres pattes) |
+| R7 | 4,7 kΩ (ou 2 × 10 kΩ en parallèle), non montée par défaut, d'où la croix sur le schéma | rappel de DATA au fil rouge, si la carte de puissance seule ne le fait pas (étape 3) |
 | JP1 | cavalier 2 broches | fermé, le 5 V du D1 mini alimente le fil rouge de la nappe : étape 2 seulement |
 | J1 | alimentation de labo réglable à sortie flottante, 5,0 V limitée à 300 mA | étapes 1 et 3 |
 | J2 | pinces ou fils Dupont sur la nappe 3 fils (blanc DATA, rouge VCC, noir GND) | raccordement |
