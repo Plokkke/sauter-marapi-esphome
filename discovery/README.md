@@ -41,7 +41,7 @@ Un seul montage pour les trois étapes. Schéma : [`linap-bench.kicad_sch`](lina
 | 2. fausse carte de puissance | USB | **fermé** | émet | non | **non** |
 | 3. fausse carte de commande | J1 | ouvert | émet | **oui** | oui |
 
-Pourquoi un NPN pour émettre : une diode vers une broche à 3,3 V écrêterait DATA au repos sous le seuil haut de l'ESP8266. D8 est tiré à la masse sur le D1 mini au démarrage : Q1 reste bloqué pendant le boot.
+Pourquoi un NPN pour émettre : une diode vers une broche à 3,3 V écrêterait DATA au repos sous le seuil haut de l'ESP8266. D8 est tiré à la masse sur le D1 mini au démarrage, et le firmware d'écoute le force à l'état bas : avec D8 laissé à lui-même, Q1 bloquait tout le bus.
 
 ## Règles de sécurité sur le radiateur (étapes 1 et 3)
 

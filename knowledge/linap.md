@@ -18,6 +18,7 @@ Le **bus Linap** est la liaison interne du sèche-serviettes, une nappe de 3 fil
 | rouge | VCC, fourni par la carte de puissance | 5,22 V |
 | blanc | DATA, au repos à l'état haut (≈ VCC − 0,3 V) | — |
 
+- **Le 5 V de la nappe** (essai de charge du 10/11/2026, résistances de 220 Ω ajoutées au boîtier de commande, qui prend 35 à 40 mA) : il tient **≈ 160 mA en tout**, démarrage, touches et Boost compris (5,10 V). Vers 180 mA il tient au repos (5,08 V) mais lâche dès qu'on touche l'écran ou au démarrage ; vers 205 mA il lâche en quelques secondes. La tension ne baisse presque pas avant de s'effondrer : c'est une limite de courant, pas une chute progressive. Quand elle lâche, le boîtier de commande redémarre en boucle et le bus se tait.
 - Chaque carte tire DATA à la masse pour émettre (collecteur ouvert). Le rappel à l'état haut vient de la carte de commande : sans elle, il faut une résistance (5 kΩ vers VCC sur le banc).
 - **Le bus est au potentiel du secteur** : entre GND et le neutre, 850 Ω / 1117 Ω selon le sens (0,32 V / 0,72 V en test de diode), OL vers la phase. Rien de relié à la terre ou à un PC ne doit s'y brancher.
 
@@ -57,6 +58,7 @@ Octets donnés avec leur bit de parité, tels qu'on les lit sur le fil.
 | `C7` | carte de puissance | `80 E0 38` | en marche, ne chauffe pas |
 | | | `01 E0 38` | chauffe du fluide |
 | | | `83 E0 98` | Boost (soufflerie) |
+| | | `83 E0 38` | brièvement, à la fin d'un Boost |
 | | | `80 E0 40` | arrêt |
 | `67` | carte de puissance, après un changement | `80 80 80` / `1F 40 80` | sans chauffe / chauffe ou Boost |
 | `75` | carte de puissance | `83 xx 02` | `xx` varie en continu (de 0 à 127 pendant le Boost) : mesure ou compteur, inconnu |
@@ -83,7 +85,7 @@ Essais d'écriture vers la carte de commande (au banc, sans secteur) : chacun de
 - **Lecture** : chaque réponse de la carte de commande donne la consigne, le Boost ou l'arrêt choisis aux touches. `C7` dit si le radiateur chauffe.
 - **Écriture** : l'ESP répond ce qu'il veut à la carte de puissance. Par défaut il relaie la carte de commande ; quand Home Assistant impose un état, il l'envoie à la place, jusqu'au prochain changement fait aux touches. L'écran, lui, garde l'état choisi aux touches.
 - **Temps réel** : la réponse doit partir dans le bit qui suit l'appel (≈ 100 µs). Il faut une réception sur interruption ou par UART matérielle, pas une lecture dans la boucle ESPHome.
-- **Sécurité** : si l'ESP tombe, les deux moitiés de DATA ne se parlent plus et le radiateur s'arrête en « Err 10 ». Prévoir un relais à contact repos qui relie DATA directement quand l'ESP n'est pas alimenté ou pas prêt.
+- **Panne** : si l'ESP tombe, les deux moitiés de DATA ne se parlent plus et le radiateur s'arrête en « Err 10 », sans chauffer. Un redémarrage de l'ESP (une dizaine de secondes) passe sans effet.
 
 ## Pas encore connu
 
@@ -92,7 +94,7 @@ Essais d'écriture vers la carte de commande (au banc, sans secteur) : chacun de
 
 ## Carte finale
 
-> La carte dessinée ci-dessous date d'avant le MITM : elle se branche **en dérivation** sur le bus, avec une seule voie de lecture et une seule voie d'émission. Pour le MITM, elle doit passer à **deux voies isolées** (côté commande, côté puissance), un relais de repli qui relie DATA, et une réception assez rapide pour répondre dans le bit (voir `backlog.md`).
+> La carte dessinée ci-dessous (sur un ESP32-C3 super mini) date d'avant le MITM, et la nouvelle passera à un D1 mini alimenté par la nappe (`architecture.md`) : elle se branche **en dérivation** sur le bus, avec une seule voie de lecture et une seule voie d'émission. Pour le MITM, elle doit passer à **deux voies** (côté commande, côté puissance) et une réception assez rapide pour répondre dans le bit (voir `backlog.md`).
 
 Source : `hardware/linap/radiator-controller-linap.kicad_sch` (KiCad 10), rendu ci-dessous ; version interactive sur [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/linap/radiator-controller-linap.kicad_sch).
 

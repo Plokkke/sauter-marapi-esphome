@@ -1,10 +1,10 @@
 # Matériel
 
-Cartes KiCad 10, sur un ESP32-C3 super mini alimenté par un HLK-PM01.
+Cartes KiCad 10. Les deux cartes dessinées ici sont sur un ESP32-C3 super mini alimenté par un HLK-PM01 ; la carte MITM passera à un D1 mini alimenté par la nappe.
 
 | Carte | Dossier | État | Détails |
 |---|---|---|---|
-| **Linap** | `linap/` | dessinée en dérivation sur le bus, à redessiner pour le MITM (deux voies et relais de repli) | `knowledge/linap.md` |
+| **Linap** | `linap/` | dessinée en dérivation sur le bus (C3, HLK-PM01, optocoupleurs), à redessiner pour le MITM : D1 mini alimenté par la nappe, deux voies | `knowledge/linap.md`, `knowledge/architecture.md` |
 | fil pilote + Boost | `pilot-wire/` | piste mise de côté, jamais fabriquée, gardée comme référence | `knowledge/fil-pilote.md` |
 
 Chaque dossier contient le schéma (`.kicad_sch`, rendu `.svg`), le circuit imprimé (`.kicad_pcb`, rendus `-top.png`, `-bottom.png`, `-3d.png`) et un modèle 3D `.step` pour le boîtier.

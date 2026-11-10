@@ -6,17 +6,19 @@
 - [x] La carte de puissance obéit à un ESP qui joue la carte de commande (consigne, Boost, arrêt).
 - [x] La carte de commande répond à un ESP qui joue la carte de puissance : tout ce qui est fait aux touches est lisible.
 - [x] La carte de commande ne se laisse pas piloter par le bus (adresses et écritures essayées) : l'écran ne suivra pas HA.
+- [x] Capacité du 5 V de la nappe : ≈ 160 mA en tout, lâche vers 180 mA. Un D1 mini y tient avec le boîtier de commande (démarrages et Boost validés) : plus de 230 V à raccorder.
 
 ## Carte MITM
 
 - [ ] Redessiner `hardware/linap/` pour le MITM :
-  - deux voies isolées, côté commande et côté puissance, chacune avec sa réception (H11L1M) et son émission (LTV-817) ;
-  - un relais à contact repos qui relie DATA directement quand l'ESP n'est pas prêt ;
+  - sur un D1 mini alimenté par la nappe, avec un condensateur de 470 à 1000 µF ;
+  - deux voies, côté commande et côté puissance, chacune avec le montage du banc (pont diviseur en lecture, NPN en émission) ;
   - le rappel de DATA à l'état haut côté carte de puissance (≈ 5 kΩ vers VCC), que la carte de commande ne fait plus ;
   - deux connecteurs pour la nappe coupée (GND, VCC, DATA de chaque côté).
 - [ ] Mesurer la place libre dans le boîtier de commande et choisir où loger la carte et comment couper la nappe (rallonge à connecteurs d'origine si possible).
-- [ ] Firmware ESP32-C3 : réponse dans le bit qui suit l'appel (réception sur interruption ou UART matérielle), relais par défaut, état imposé par HA, retour au relais sur appui d'une touche ou sans HA pendant 30 min.
-- [ ] Prototype au banc avec deux D1 mini ou un ESP32 à deux UART avant la carte : vérifier le relais complet, cartes branchées.
+- [ ] Mesurer la marge de réponse de la carte de puissance (étape 3, réglage « Reply gap » à 2, 5, 10, 20 bits, Boost à chaque palier), pour savoir si l'ESP8266 du D1 mini répond assez vite (une seule UART complète : UART0 côté puissance, UART1 et réception logicielle côté commande). Un ESP32 consommerait trop pour la nappe.
+- [ ] Firmware : réponse dans le bit qui suit l'appel (réception sur interruption ou UART matérielle), mode transparent par défaut, état imposé par HA, retour au mode transparent sur appui d'une touche ou sans HA pendant 30 min.
+- [ ] Prototype au banc avec deux D1 mini ou un ESP32 à deux UART avant la carte : vérifier le mode transparent et l'état imposé, cartes branchées.
 - [ ] Boîtier (`enclosure/`), séparation secteur / basse tension.
 
 ## À comprendre

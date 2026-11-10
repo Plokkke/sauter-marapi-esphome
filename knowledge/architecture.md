@@ -5,7 +5,7 @@
 | Niveau | Projet | Rôle |
 |---|---|---|
 | Sèche-serviettes | Sauter Marapi tactile 1750 W (750 W de fluide + 1000 W de soufflerie) | sa carte de commande (écran, touches) choisit consigne, mode et Boost ; sa carte de puissance chauffe d'après sa propre sonde |
-| Pont | **ce projet** | un ESP32-C3 sur le bus Linap interne : lit ce que fait l'utilisateur, impose ce que décide Home Assistant |
+| Pont | **ce projet** | un ESP (format D1 mini) sur le bus Linap interne : lit ce que fait l'utilisateur, impose ce que décide Home Assistant |
 | Maison | automatisation HA (autre projet) | plannings, présence, délestage |
 
 Ce projet ne contient aucune automatisation HA.
@@ -31,18 +31,24 @@ Ce projet ne contient aucune automatisation HA.
 |---|---|---|
 | Consigne, Boost, arrêt lus sur la carte de commande | capteurs | ce que l'utilisateur a réglé aux touches |
 | Chauffe en cours | capteur binaire | `C7` de la carte de puissance |
-| Mode imposé | `select` | relais (défaut), consigne imposée, Boost, arrêt |
+| Mode imposé | `select` | transparent (défaut), consigne imposée, Boost, arrêt |
 | Consigne imposée | `number` | consigne envoyée à la carte de puissance en mode imposé |
 
 La carte de commande n'envoie que sa consigne effective : HA voit la consigne Éco quand elle est en Éco, sans le mot « Éco ».
 
 ## Sécurité
 
-- **Repli matériel** : si l'ESP n'est pas alimenté, plante ou démarre, un relais à contact repos relie directement les deux moitiés de DATA, et le radiateur fonctionne comme d'origine. Sans lui, un ESP en panne mettrait le radiateur en « Err 10 ».
-- **Repli logiciel** : sans HA pendant 30 min, l'ESP revient au relais.
-- **Isolement** : le bus est au potentiel du secteur ; tout ce qui est touchable (USB, boîtier) en est isolé (HLK-PM01, optocoupleurs).
+- **Sans Home Assistant** : l'ESP reste en mode transparent, et y revient s'il a perdu HA depuis 30 min alors qu'un état était imposé. C'est le seul risque à couvrir.
+- **Pas de relais de repli** (décidé le 10/11/2026) : si la carte elle-même tombe en panne, le radiateur s'arrête en « Err 10 », sans chauffer, donc sans danger. La carte se branche par des connecteurs : la débrancher et reconnecter la nappe d'origine remet le radiateur dans son état d'usine.
+- **Démarrage et mise à jour OTA** : une dizaine de secondes sans dialogue, tolérées (30 s mesurées sans effet côté carte de puissance, plusieurs minutes avant « Err » côté carte de commande).
+- **Potentiel du secteur** : alimentée par la nappe, toute la carte est au potentiel du bus, donc du secteur, comme le boîtier de commande. Elle est entièrement enfermée, sans partie touchable ni USB accessible, et se met à jour en OTA uniquement.
 
 ## Alimentation
 
-- Le module est alimenté par l'arrivée murale du sèche-serviettes (phase + neutre, en aval du différentiel 30 mA de la salle de bains), via un HLK-PM01 protégé par un fusible.
-- La nappe se raccorde au module par un câble prévu pour le secteur : un côté vers la carte de commande, un côté vers la carte de puissance.
+**Décidé** (10/11/2026) : la carte s'alimente sur le **5 V de la nappe**, comme le boîtier de commande. Plus de raccordement au 230 V, ni HLK-PM01, ni fusible, ni varistance.
+
+- Le 5 V de la carte de puissance tient ≈ 160 mA en tout et lâche vers 180 mA (`linap.md`). Le boîtier de commande en prend 40, un D1 mini en Wi-Fi 80 en moyenne : ≈ 120 mA, ≈ 40 mA de marge.
+- Validé avec un D1 mini sur la nappe et le boîtier de commande branché : VCC à 5,11 V, plusieurs démarrages du radiateur, navigation et Boost.
+- Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes d'émission Wi-Fi.
+- Pas de marge pour un ESP32, qui consomme davantage, ni pour une bobine de relais : la carte reste sobre.
+- Sur chaque voie, pas besoin d'optocoupleur : l'ESP est au potentiel du bus, et le montage du banc suffit (pont diviseur en lecture, NPN en émission).

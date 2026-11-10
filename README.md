@@ -14,7 +14,8 @@ Pilotez votre sèche-serviettes Sauter Marapi depuis Home Assistant, en gardant 
 - **Suivre le radiateur** : consigne, Boost et arrêt réglés sur les touches, chauffe en cours.
 - **Le régler depuis Home Assistant** : consigne, Boost (soufflerie), arrêt.
 - **Garder l'appareil d'origine** : l'écran et les touches continuent de marcher comme avant ; le dernier qui parle, touche ou Home Assistant, a raison.
-- **Sans risque** : carte éteinte ou en panne, un relais relie directement les deux cartes du radiateur, qui fonctionne comme d'origine.
+- **Rien à brancher sur le 230 V** : la carte s'alimente sur le 5 V de la nappe, comme le boîtier de commande.
+- **Sans risque** : sans Home Assistant, la carte se contente de transmettre, et le radiateur marche comme d'origine. Si la carte elle-même tombe en panne, le radiateur s'arrête (« Err 10 ») : il suffit de la débrancher et de reconnecter la nappe d'origine.
 
 ## Compatibilité
 
@@ -31,11 +32,11 @@ La carte coupe le fil de données et se place entre les deux, comme un interméd
 
 ```mermaid
 flowchart LR
-  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>ESPHome]
+  HA[Home Assistant] <-- Wi-Fi --> C3[ESP<br>ESPHome]
   CMD[Boîtier de commande<br>écran, touches] <-- données --> C3
   C3 <-- données --> PWR[Carte de puissance<br>fluide, soufflerie]
   PWR -. 5 V et masse, en direct .- CMD
-  C3 --- R[Relais de repli :<br>relie les données<br>si la carte s'arrête]
+  PWR -. 5 V .-> C3
 ```
 
 **Limite** : le boîtier de commande n'accepte aucun ordre par le bus. Son écran affiche toujours ce qui a été réglé sur ses touches : un Boost lancé par Home Assistant ne s'y voit pas.
@@ -72,14 +73,14 @@ Aucune documentation n'existe sur ce bus. Il a été décodé avec un **Wemos D1
 ## Le matériel
 
 > [!NOTE]
-> En cours de conception. La carte dessinée dans `hardware/linap/` se branche en dérivation sur le bus. Elle doit être redessinée pour l'intermédiaire, avec deux voies isolées, le relais de repli et une réception assez rapide pour répondre dans le bit qui suit l'appel ([backlog](knowledge/backlog.md)).
+> En cours de conception. La carte dessinée dans `hardware/linap/` se branche en dérivation sur le bus. Elle doit être redessinée pour l'intermédiaire, avec deux voies et une réception assez rapide pour répondre dans le bit qui suit l'appel ([backlog](knowledge/backlog.md)).
 
 Ce qui ne changera pas :
 
-- **ESP32-C3 super mini** sous ESPHome, enfiché sur des barrettes.
-- **Alimentation isolée** HLK-PM01 (230 V → 5 V), sur l'arrivée murale du sèche-serviettes, avec **fusible T1A** et **varistance**.
-- **Bus isolé** par optocoupleurs : un H11L1M pour lire, un LTV-817 pour tirer la ligne de données à la masse, sur chacune des deux voies.
-- Plus de **6 mm** entre le côté secteur (230 V et bus) et la basse tension sur la carte.
+- **Un Wemos D1 mini** (ESP8266) sous ESPHome : la place ne manque pas dans le radiateur, et son antenne est meilleure que celle d'un C3 super mini, loin de la box. Un ESP32 consommerait trop pour la nappe. Reste à mesurer la marge que laisse la carte de puissance pour répondre à ses appels.
+- **Alimentée par la nappe** : le 5 V de la carte de puissance tient ≈ 160 mA en tout, et un D1 mini avec le boîtier de commande en prend ≈ 120 (VCC à 5,11 V, démarrages du radiateur et Boost validés). Plus de 230 V à raccorder. Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes du Wi-Fi.
+- **Sur chaque voie**, le montage du banc : un pont diviseur pour lire DATA, un transistor NPN pour la tirer à la masse.
+- **Toute la carte est au potentiel du secteur**, comme le boîtier de commande : elle doit être entièrement enfermée, sans rien de touchable, et se mettre à jour par Wi-Fi seulement.
 
 Projets KiCad 10, bibliothèque commune et export de fabrication : [`hardware/`](hardware/README.md).
 
@@ -102,7 +103,7 @@ Entités prévues :
 |---|---|
 | Consigne, Boost, arrêt du boîtier de commande | ce qui est réglé sur les touches |
 | Chauffe | le radiateur chauffe-t-il ? |
-| Mode imposé | relais (par défaut), consigne imposée, Boost, arrêt |
+| Mode imposé | transparent (par défaut), consigne imposée, Boost, arrêt |
 | Consigne imposée | consigne envoyée à la carte de puissance en mode imposé |
 
 Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assistant voit la consigne Éco, sans savoir que c'est l'Éco.
@@ -123,4 +124,4 @@ Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assis
 
 ---
 
-**Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur électrique, Groupe Atlantic, Thermor, Atlantic, bus interne, liaison Linap, Err 10, man in the middle, rétro-ingénierie, ESPHome, Home Assistant, domotique, ESP32-C3, ESP32-C3 super mini, HLK-PM01, H11L1M, boîtier de commande `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, circuit imprimé KiCad.
+**Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur électrique, Groupe Atlantic, Thermor, Atlantic, bus interne, liaison Linap, Err 10, man in the middle, rétro-ingénierie, ESPHome, Home Assistant, domotique, ESP8266, Wemos D1 mini, boîtier de commande `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, circuit imprimé KiCad.

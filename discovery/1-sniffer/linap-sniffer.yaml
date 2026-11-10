@@ -29,6 +29,13 @@ remote_receiver:
   filter: 4us
   buffer_size: 8kb
 
+# Bench revision 2 has Q1 on D8: D8 does not stay low by itself with this firmware, and Q1 would then hold DATA low
+# and silence the whole bus (seen on 10/11/2026). Driven low here, so Q1 can stay wired.
+output:
+  - platform: gpio
+    id: q1_off
+    pin: GPIO15
+
 # Guided capture, from a phone: http://linap-sniffer.local. The page shows the next radiator action (steps in
 # linap-sniffer-steps.h); "Go" logs it as a marker in the same stream as the frames, then counts down the wait.
 # decode.py splits the capture by these markers. "Note" logs free text the same way.

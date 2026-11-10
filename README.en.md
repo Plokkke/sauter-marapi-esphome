@@ -14,7 +14,8 @@ Control your Sauter Marapi towel radiator from Home Assistant while keeping its 
 - **Monitor the radiator**: setpoint, Boost and off as set on the keys, heating in progress.
 - **Control it from Home Assistant**: setpoint, Boost (fan), off.
 - **Keep the original appliance**: the screen and keys keep working as before; the last one to speak, key or Home Assistant, wins.
-- **Fail-safe**: with the board off or broken, a relay joins the radiator's two boards directly, and it works as it did originally.
+- **Nothing to wire to 230 V**: the board runs from the ribbon's 5 V, like the control box.
+- **Safe**: without Home Assistant the board just passes everything through, and the radiator works as it did originally. If the board itself fails, the radiator stops ("Err 10"): unplug it and reconnect the original ribbon.
 
 ## Compatibility
 
@@ -31,11 +32,11 @@ The board cuts the data wire and sits between the two (*man in the middle*). By 
 
 ```mermaid
 flowchart LR
-  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>ESPHome]
+  HA[Home Assistant] <-- Wi-Fi --> C3[ESP<br>ESPHome]
   CMD[Control box<br>screen, keys] <-- data --> C3
   C3 <-- data --> PWR[Power board<br>fluid, fan]
   PWR -. 5 V and ground, direct .- CMD
-  C3 --- R[Fail-safe relay:<br>joins the data wire<br>when the board stops]
+  PWR -. 5 V .-> C3
 ```
 
 **Limitation**: the control box accepts no order over the bus. Its screen always shows what was set on its keys: a Boost started by Home Assistant does not show there.
@@ -72,14 +73,14 @@ There is no documentation of this bus. It was decoded with a **Wemos D1 mini** w
 ## Hardware
 
 > [!NOTE]
-> Work in progress. The board drawn in `hardware/linap/` taps the bus in parallel. It has to be redrawn for the man in the middle, with two isolated channels, the fail-safe relay and a receiver fast enough to answer within the bit that follows the poll ([backlog](knowledge/backlog.md), in French).
+> Work in progress. The board drawn in `hardware/linap/` taps the bus in parallel. It has to be redrawn for the man in the middle, with two channels and a receiver fast enough to answer within the bit that follows the poll ([backlog](knowledge/backlog.md), in French).
 
 What will not change:
 
-- **ESP32-C3 super mini** running ESPHome, plugged into sockets.
-- **Isolated supply** HLK-PM01 (230 V → 5 V), on the towel radiator's wall supply, with a **T1A fuse** and a **varistor**.
-- **Isolated bus** through optocouplers: an H11L1M to read, an LTV-817 to pull the data line low, on each of the two channels.
-- More than **6 mm** between the mains side (230 V and bus) and low voltage on the board.
+- **A Wemos D1 mini** (ESP8266) running ESPHome: space is not an issue inside the radiator, and its antenna is better than a C3 super mini's, far from the router. An ESP32 would draw too much for the ribbon. How much slack the power board leaves to answer its polls is still to be measured.
+- **Powered by the ribbon**: the power board's 5 V holds about 160 mA in total, and a D1 mini plus the control box draw about 120 (VCC at 5.11 V, radiator power-ups and Boost validated). No more 230 V wiring. A 470 to 1000 µF capacitor next to the ESP absorbs the Wi-Fi peaks.
+- **On each channel**, the bench circuit: a voltage divider to read DATA, an NPN transistor to pull it low.
+- **The whole board is at mains potential**, like the control box: it must be fully enclosed, with nothing touchable, and updated over Wi-Fi only.
 
 KiCad 10 projects, shared library and fabrication export: [`hardware/`](hardware/README.md) (in French).
 
@@ -102,7 +103,7 @@ Planned entities:
 |---|---|
 | Control box setpoint, Boost, off | what is set on the keys |
 | Heating | is the radiator heating? |
-| Imposed mode | relay (default), imposed setpoint, Boost, off |
+| Imposed mode | pass-through (default), imposed setpoint, Boost, off |
 | Imposed setpoint | setpoint sent to the power board in imposed mode |
 
 The control box only sends its effective setpoint: in Eco, Home Assistant sees the Eco setpoint, without knowing it is Eco.
@@ -125,4 +126,4 @@ All of `knowledge/` is in French.
 
 ---
 
-**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, ESPHome, Home Assistant, home automation, ESP32-C3, ESP32-C3 super mini, HLK-PM01, H11L1M, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.
+**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, ESPHome, Home Assistant, home automation, ESP8266, Wemos D1 mini, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.
