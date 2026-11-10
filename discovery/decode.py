@@ -5,9 +5,10 @@ Live:  esphome logs discovery/1-sniffer/linap-sniffer.yaml | tee capture.log | d
 Later: discovery/decode.py capture.log --changes --ignore 75
 
 A frame is the list of DATA levels in µs: positive = low, negative = high (the receiver pin is inverted).
-Bytes are read as a UART (Linap: 9600 baud 8N1): idle high, start bit low, LSB first, then the optional parity bit
-and a stop bit high. --baud 0 fits the standard baud rate per frame instead. Linap frames are 5 bytes, the last one
-being the XOR of bytes 2 to 4: frames failing it are flagged. Action markers logged by the firmware's guided
+Bytes are read as a UART (Linap: 9600 baud, 7 data bits + odd parity, read here as 8N1): idle high, start bit low,
+LSB first, then the optional parity bit and a stop bit high. --baud 0 fits the standard baud rate per frame instead.
+Linap frames are 5 bytes, the last one being the XOR of bytes 2 to 4: frames failing it are flagged. A 46 or 70
+frame is the power board's lone poll byte followed, one bit later, by the command board's 4 bytes. Action markers logged by the firmware's guided
 capture ("action" tag) are printed in place, so the frames between two markers follow that action.
 """
 import argparse

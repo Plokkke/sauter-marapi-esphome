@@ -39,6 +39,12 @@ interval:
           linap_bus.sent(frame);
           if (injected)
             ESP_LOGI("tx", "injected %s", linap::hex(frame).c_str());
+          const int poll = power_board.poll_after(frame, millis());
+          if (poll >= 0 && id(poll_command_board).state) {
+            delay(id(poll_delay).state);
+            id(uart_bus).write_byte(poll);
+            linap_bus.sent({static_cast<uint8_t>(poll)});  // heard back alone when nobody answers
+          }
 
 switch:
   - platform: template
@@ -50,6 +56,43 @@ switch:
       - logger.log: {level: INFO, tag: action, format: "polling on"}
     on_turn_off:
       - logger.log: {level: INFO, tag: action, format: "polling off"}
+  - platform: template
+    id: poll_command_board
+    name: Send the poll byte (46 or 70)
+    optimistic: true
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      - logger.log: {level: INFO, tag: action, format: "poll byte on"}
+    on_turn_off:
+      - logger.log: {level: INFO, tag: action, format: "poll byte off"}
+
+# From the end of our 75 or C7 to the poll byte: ~13.5 ms on the radiator, plus the last byte still in the FIFO
+number:
+  - platform: template
+    id: poll_delay
+    name: Poll delay
+    optimistic: true
+    min_value: 1
+    max_value: 50
+    step: 1
+    initial_value: 14
+    unit_of_measurement: ms
+    mode: box
+    on_value:
+      - logger.log: {level: INFO, tag: action, format: "poll delay %.0f ms", args: [x]}
+  # 7 data bits of the poll byte sent after C7 (70 = 0x46, the normal poll), parity added: address scan
+  - platform: template
+    name: Probe address
+    optimistic: true
+    min_value: 0
+    max_value: 127
+    step: 1
+    initial_value: 70
+    mode: box
+    on_value:
+      - lambda: |-
+          power_board.probe = linap::with_parity(x);
+          ESP_LOGI("action", "probe %02X", power_board.probe);
 
 # State the power board reports in C7, at every cycle (names from linap-frames.h)
 select:

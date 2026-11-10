@@ -1,6 +1,7 @@
 #pragma once
 
-// Linap frames (knowledge/linap.md): 9600 baud 8N1, 5 bytes = header, 3 data bytes, XOR of the 3 data bytes.
+// Linap frames (knowledge/linap.md): 9600 baud, 7 data bits + odd parity read as 8N1, 5 bytes = header, 3 data
+// bytes, XOR of the 3 data bytes.
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -168,7 +169,12 @@ inline std::vector<Frame> split_frames(const Frame &bytes) {
 // Our side of the bus: frames waiting to be sent, our own frames heard back, frames from the other board
 class Bus {
  public:
-  void sent(const Frame &frame) { this->last_sent_ = frame; }
+  // Kept until heard back: a frame and its poll byte can both be out before the first echo is decoded
+  void sent(const Frame &frame) {
+    this->sent_.push_back(frame);
+    if (this->sent_.size() > MAX_UNHEARD)
+      this->sent_.pop_front();
+  }
   void inject(const Frame &frame) { this->pending_.push_back(frame); }
   bool has_pending() const { return !this->pending_.empty(); }
 
@@ -181,7 +187,9 @@ class Bus {
   // Calls handle(frame, news) for each frame of the other board; news = differs from the last one of its header
   template<typename Handler> void receive(const std::vector<int32_t> &timings, Handler handle) {
     for (const Frame &frame : split_frames(uart_bytes(timings))) {
-      if (frame == this->last_sent_) {
+      const auto echo = std::find(this->sent_.begin(), this->sent_.end(), frame);
+      if (echo != this->sent_.end()) {
+        this->sent_.erase(this->sent_.begin(), echo + 1);
         this->echoes_++;
         continue;
       }
@@ -202,7 +210,8 @@ class Bus {
   }
 
  private:
-  Frame last_sent_;
+  static const size_t MAX_UNHEARD = 4;
+  std::deque<Frame> sent_;
   std::deque<Frame> pending_;
   std::map<uint8_t, Frame> last_by_header_;
   int echoes_ = 0;
