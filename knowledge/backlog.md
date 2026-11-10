@@ -1,25 +1,35 @@
 # Backlog
 
-- [ ] Vérifier sur l'appareil que le mode **Programme Inactif** est sélectionné.
-- [ ] Mesurer la place disponible dans la boîte de raccordement ; sinon boîtier IP44 séparé, hors volumes 0 et 1.
-- [ ] Prototype sur plaque, test à vide : mesure à l'oscilloscope ou au multimètre (AC/DC) entre fil pilote et neutre pour chaque ordre.
-- [ ] Boîtier imprimé en 3D (`enclosure/`), séparation 230 V / basse tension.
-- [ ] **Boost (soufflerie)** : aucun ordre fil pilote ne le déclenche. Carte du boîtier de commande photographiée le 25/10/2026 ([dans son boîtier](photos/command-board-in-box.jpg), [touches et écran](photos/command-board-keys.jpg)) :
-  - étiquette `HM011 TD1N01 RAD`, circuit imprimé `74 60 5004 IndB` ; microcontrôleur **STM32F091CCT6** (Cortex-M0, LQFP48, contrôleur tactile capacitif TSC intégré), écran LCD Varitronix sur nappe, buzzer CMS ;
-  - **touches capacitives** : 5 ressorts dorés soudés sur des électrodes, qui prolongent l'électrode jusqu'à la vitre ; aucun contact mécanique à court-circuiter ;
-  - liaison vers la carte de puissance : câble 3 fils (noir, blanc, rouge), probablement masse, alimentation et données (Linap) ;
-  - 5 pastilles alignées (recto et verso) : probablement le port de programmation SWD. La lecture du firmware est sûrement verrouillée (RDP), donc pas une piste prioritaire.
-- [ ] Piste retenue pour le Boost : simuler un doigt sur l'électrode de la touche Boost. Un photoMOS isolé en série avec un condensateur de 10 à 100 pF, à ajuster au banc, relie la pastille du ressort à la masse de la carte ; il est monté sur la carte Boost, détachable de la carte initiale et logée contre la touche, commandée par J6 → J8 (voir `fil-pilote.md`, *Boost et compteur*). À choisir au banc : un photoMOS à faible capacité ouverte (l'AQY212 dépasse plusieurs dizaines de pF) et isolé ≥ 3,75 kV. Le TSC recalibre sa ligne de base au démarrage, ce qui absorbe la capacité du photoMOS ouvert. Masse de la carte probablement au potentiel du secteur : mesurer avant tout branchement, isolement obligatoire, et la garantie (2 ans) saute. Pas de retour d'état : la durée du boost est fixée dans le Menu Expert (10 à 60 min), HA la suit avec une minuterie ;
-  - à défaut : Confort pendant 30 min avec une consigne haute (750 W de fluide seulement, montée lente).
-- [ ] Mesurer la place libre dans le boîtier de commande, à côté du ressort Boost : la carte Boost fait 30 × 13 mm (DIP-4 et JST PH debout, ≈ 8 mm de haut) ; la redessiner si elle ne tient pas.
-- [ ] **Mesure de puissance** : Shelly PM Mini Gen3 (sans relais) dans la boîte de raccordement, ou PZEM-004T v3 sur J7 de la carte initiale (`pzemac`, GPIO20/21). Sert aussi de retour d'état : ≈ 1750 W = Boost, ≈ 750 W = fluide, 0 = en attente.
-- [ ] **Rétro-ingénierie de la liaison Linap** (boîtier de commande ↔ carte de puissance, cf. « Err 10 ») : banc d'un D1 mini flottant piloté en Wi-Fi, sans analyseur sur le secteur (méthode, firmwares et schéma : `discovery/`). Objectif : lire consigne, mode, boost, température ; au mieux, les écrire (voir `linap.md`). Une fois le protocole connu, la carte finale remplace la carte initiale.
-  - [x] Mesures au multimètre (07/11/2026) : fils, VCC 5,22 V (R8 = 1,5 kΩ), bus au potentiel du secteur.
-  - [x] Format du bus et premières trames (07/11/2026) : 9 600 bauds 8N1, trames de 5 octets, consigne et Boost identifiés (`linap.md`).
-  - [ ] Capture longue (20-30 min, consigne haute, sans toucher) : trouver la température ambiante et l'état de chauffe.
-  - [x] Sur le radiateur, carte de commande débranchée (`discovery/3-controller-emulator/`, 10/11/2026) : **la carte de puissance obéit** à l'ESP (consigne, Boost, arrêt), à condition de répondre 1 bit après son octet d'appel `46` / `70` par les 4 octets restants. C'est elle qui décide de chauffer.
-  - [ ] Fiabiliser la réponse de l'étape 3 : un appel sur deux seulement servi (scrutation de D2 parfois trop tardive) ; essayer l'UART matérielle (D7 relié à D2).
-  - [ ] Refaire le banc sans secteur (`discovery/2-power-emulator/`) avec l'octet d'appel avant chaque réponse attendue : la carte de commande doit alors répondre (premier essai du 10/11/2026 sans appel : aucune réponse).
-  - [ ] Capture longue (consigne autour de la température de la pièce) : trouver la mesure de température de la carte de puissance (`61`, `73` ou `75`).
-  - [ ] **MITM**, cible retenue pour garder l'écran et les touches d'origine : rallonge de nappe avec DATA coupé, ESP au milieu sur deux ports série ; côté carte de puissance, il répond aux appels comme à l'étape 3, côté carte de commande, il appelle comme une carte de puissance. **Repli** : contrôleur maison remplaçant la carte de commande, avec boutons et LED (Boost, chauffe, marche/arrêt) en plus de HA. Dans les deux cas, partie touchable isolée du bus (HLK-PM01 + optocoupleurs, deux voies pour le MITM).
-- [ ] Côté HA : entité `climate` (sonde de pièce + thermostat HA qui bascule Confort / Éco), dans le projet d'automatisation.
+## Fait
+
+- [x] Bus Linap décodé : format, dialogue, consigne, Boost, arrêt (`linap.md`).
+- [x] La carte de puissance obéit à un ESP qui joue la carte de commande (consigne, Boost, arrêt).
+- [x] La carte de commande répond à un ESP qui joue la carte de puissance : tout ce qui est fait aux touches est lisible.
+- [x] La carte de commande ne se laisse pas piloter par le bus (adresses et écritures essayées) : l'écran ne suivra pas HA.
+
+## Carte MITM
+
+- [ ] Redessiner `hardware/linap/` pour le MITM :
+  - deux voies isolées, côté commande et côté puissance, chacune avec sa réception (H11L1M) et son émission (LTV-817) ;
+  - un relais à contact repos qui relie DATA directement quand l'ESP n'est pas prêt ;
+  - le rappel de DATA à l'état haut côté carte de puissance (≈ 5 kΩ vers VCC), que la carte de commande ne fait plus ;
+  - deux connecteurs pour la nappe coupée (GND, VCC, DATA de chaque côté).
+- [ ] Mesurer la place libre dans le boîtier de commande et choisir où loger la carte et comment couper la nappe (rallonge à connecteurs d'origine si possible).
+- [ ] Firmware ESP32-C3 : réponse dans le bit qui suit l'appel (réception sur interruption ou UART matérielle), relais par défaut, état imposé par HA, retour au relais sur appui d'une touche ou sans HA pendant 30 min.
+- [ ] Prototype au banc avec deux D1 mini ou un ESP32 à deux UART avant la carte : vérifier le relais complet, cartes branchées.
+- [ ] Boîtier (`enclosure/`), séparation secteur / basse tension.
+
+## À comprendre
+
+- [ ] Capture longue avec une consigne proche de la température de la pièce : trouver la mesure de température dans `75`, `61` ou `73`, pour l'exposer à HA.
+- [ ] Ce que fait la carte de puissance après un long silence de la carte de commande (au-delà de 30 s).
+- [ ] Sens de la réponse `70` (`83 80 89`, constante) et de `76`.
+
+## Côté Home Assistant
+
+- [ ] Entités du MITM (`architecture.md`), puis thermostat HA dans le projet d'automatisation.
+- [ ] Mesure de puissance éventuelle : Shelly PM Mini Gen3 dans la boîte de raccordement (≈ 1750 W = Boost, ≈ 750 W = fluide, 0 = attente), utile si `C7` ne suffit pas.
+
+## Référence : carte de commande
+
+Photographiée le 25/10/2026 ([dans son boîtier](photos/command-board-in-box.jpg), [touches et écran](photos/command-board-keys.jpg)) : étiquette `HM011 TD1N01 RAD`, circuit imprimé `74 60 5004 IndB`, microcontrôleur **STM32F091CCT6** (contrôleur tactile intégré), écran LCD Varitronix, touches capacitives (ressorts dorés vers la vitre), 5 pastilles alignées (probablement SWD, lecture du firmware sûrement verrouillée). La garantie (2 ans) est perdue dès qu'on ouvre le boîtier.

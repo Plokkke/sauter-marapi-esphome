@@ -1,58 +1,107 @@
-# Bus Linap et carte finale
+# Bus Linap
 
-La **carte finale** (`hardware/linap/`) pilote le sèche-serviettes par sa liaison interne, le bus Linap, entre le boîtier de commande et la carte de puissance (cf. « Err 10 »). Une fois le protocole connu, elle remplace le fil pilote et l'appui simulé sur la touche Boost de la carte initiale (`fil-pilote.md`). Elle sert aussi d'outil d'analyse : elle capture les trames à travers son optocoupleur.
+Le **bus Linap** est la liaison interne du sèche-serviettes, une nappe de 3 fils entre le **boîtier de commande** (écran et touches, appelé ici *carte de commande*) et la **carte de puissance** (résistance, soufflerie, sonde). Quand elle est rompue, l'écran affiche « Err 10 ». Aucune documentation publique n'existe : tout ce qui suit a été mesuré sur le radiateur (méthode et outils : [`discovery/`](../discovery/README.md)).
 
-## Ce qu'on sait du bus
+## En bref
 
-- 3 fils, mesurés le 07/11/2026 au multimètre : **noir = GND**, **rouge = VCC 5,22 V**, **blanc = DATA**. DATA est au repos à l'état haut, ≈ 0,3 V sous VCC (écart statique : on le retrouve sans aucun trafic, il ne prouve pas d'activité). Un bus **sur un seul fil de données**, probablement en semi-duplex.
-- **Carte de commande seule** (07/11/2026 ; nappe débranchée de la carte de puissance, alimentée en 5 V par USB, VCC 5,11 V) : aucune trame sur DATA, ni au repos ni en appuyant sur Boost (captures de 20 kHz à 1 MHz, ≈ 7 s au total), et aucune erreur affichée. La carte de puissance mène donc probablement le dialogue, ce que la première écoute, cartes branchées, a confirmé (ci-dessous).
-- **Le bus n'est pas isolé du secteur** (mesuré disjoncteur coupé) : entre GND et le neutre, 850 Ω / 1117 Ω selon le sens, 0,320 V / 0,718 V en test de diode ; entre GND et la phase, OL dans les deux sens. La masse est reliée au neutre à travers l'alimentation de la carte de puissance : **ces trois fils sont au potentiel du secteur**, aucun appareil relié à la terre ou à un PC ne doit s'y brancher directement.
-- R8 (VCC 5,22 V) : 1,5 kΩ.
-- **Première écoute** (07/11/2026, 90 s, D1 mini en Wi-Fi, carte de puissance branchée) :
-  - **9 600 bauds, 8N1**, bus au repos à l'état haut ; 1 574 trames, toutes décodées sans erreur à ce format (`decode.py --baud 9600`).
-  - **Trames de 5 octets** : en-tête, 3 octets de données, puis le XOR des 3 octets de données (valide sur 100 % des trames).
-  - **Parité impaire** (relevée le 10/11/2026 sur les 7 000 trames de la capture guidée, sans exception) : chaque octet compte un nombre impair de bits à 1. Le bit 7 est un bit de parité, les données tiennent sur 7 bits (une liaison 7O1 vue comme du 8N1). Les « bits 7 qui basculent » relevés plus bas ne sont que cette parité.
-  - **Rythme** : cycle de ≈ 305 ms en 5 créneaux de ≈ 61 ms (`75`, `46`, `C7`, `46`, `61`). Dans une trame de la carte de puissance, ≈ 7 bits de repos après l'en-tête puis 2 bits entre les octets suivants.
-  - **Deux émetteurs**, reconnaissables à leur signal : A allonge les états bas de ~9 µs (octets de données des trames `46`, rarement `70`), B est exact (trames `75`, `C7`, `61`, rarement `73`, `67`, `76`, et en-têtes `46` et `70`).
-  - **Cycle fixe** de 5 trames, ≈ 3,5 par seconde : `75 → 46 → C7 → 46 → 61`. B, la carte de puissance, mène le dialogue ; A, la carte de commande, ne parle que lorsqu'on l'appelle (confirmé à l'étape 3, ci-dessous).
-  - **Appel et réponse** (trouvé le 10/11/2026, étape 3) : ≈ 10 ms après `75`, `C7` ou `76`, la carte de puissance envoie **un octet seul**, l'en-tête `46` (ou `70` toutes les 30 s environ). La carte de commande répond **1 bit après** par les 3 octets de données et la somme de contrôle, sans en-tête, enchaînés. Le sniffer, qui découpait les trames après 10 ms de repos, voyait l'ensemble comme une trame `46` de 5 octets.
-  - Un appui sur Boost change les données des trames `46` (`B0 A1 80` → `38 80 80`) puis celles de `C7` et `61`. L'octet 3 des trames `75` décroît régulièrement (0x40 → 0x13 en 90 s ; le bit 7 qui bascule est la parité) : mesure ou compte à rebours, à identifier. Au repos, consigne 14,5, il oscille entre 0x2F et 0x38, comme une mesure bruitée.
-- **Capture guidée** (07/11/2026, 14 min, 12 070 trames dont 2 erronées, une action par repère) :
-  - **Consigne** : trame `46` de la carte de commande, octet 2, **7 bits de poids faible = consigne × 2** : 14,5 → `1D`, 15 → `1E`, 15,5 → `1F`, 20,5 → `29`, Éco 10,0 → `14`. Elle n'est émise qu'une fois la saisie terminée (≈ 5 s après la dernière touche) : de 14,5 à 20,5 par paliers rapides, une seule transition `9D` → `29`. La carte de commande envoie la **consigne effective** : en Éco, la consigne Éco, sans indication de mode.
-  - **Boost** : `46 B0 xx 80` → `46 38 80 80` (octet 1 `B0` → `38`, consigne effacée) ; la carte de puissance répond `C7 83 E0 98` (au lieu de `C7 80 E0 38`). Retour à l'identique à l'arrêt du Boost.
-  - **Arrêt par la touche** : `46 80 80 80 80` (tous les octets de données à `80`, comme au démarrage avant initialisation) et `C7 80 E0 40` ; remise en marche : retour à `46 B0 9D 80`.
-  - **Mise sous tension** : le bus démarre en ≈ 3 s (`46 80 80 80 80`, `C7 80 E0 40 20`), la carte de commande envoie sa consigne ≈ 10 s plus tard.
-  - **Verrouillage des touches** : aucun effet sur le bus, il est local à la carte de commande.
-  - Le bit 7 de l'octet 2 de `46` (0 pour 15,5 et 20,5 ; 1 pour 14,5, 15 et 10), un temps pris pour une demande de chauffe, est la parité : 7 bits de consigne × 2, bit 7 complétant à un nombre impair de 1.
-  - Hypothèses à confirmer : `75` octet 2 (7 bits) varie en continu, tourne sur toute la plage 0-127 pendant le Boost (compteur ou mesure de la soufflerie ?) ; `61`, `67`, `73` à identifier.
-  - Aucun écho de la consigne côté carte de puissance : la carte de commande en est la seule source. Quand la consigne passe au-dessus de la température ambiante, la carte de puissance passe `C7` à `01` et envoie `67 1F 40` (la même trame qu'au Boost) : c'est elle qui décide de chauffer (étape 3).
-  - `73` (carte de puissance, ponctuelle, juste après un changement de `46`) : candidate pour une température. Ses 7 bits bas de l'octet 2 descendent lentement d'une capture à l'autre (59, puis 56, puis 55 ; `B9`, `BA` pendant la chauffe, soit 57 et 58, le bit 7 n'étant que la parité). Unité inconnue, à confirmer par la capture longue.
-- **Fausse carte de puissance** (10/11/2026, `discovery/2-power-emulator/`, carte de commande seule sur le bureau) : nos trames `75`, `C7`, `61` relevées sur DATA sont identiques aux vraies, octets, pauses et cycle compris, VCC 5,13 V. La carte de commande ne répond jamais, même après un redémarrage avec `C7` à l'arrêt comme à la mise sous tension, et n'affiche pas le Boost annoncé ; elle n'affiche pas non plus « Err » (seule, sans trafic, elle l'affichait au bout de 5 min). Avec ou sans rappel de 5 kΩ sur DATA, même résultat. Explication trouvée à l'étape 3 : notre fausse carte de puissance n'envoyait pas l'octet d'appel `46`, la carte de commande n'avait donc pas à répondre.
-- **Fausse carte de commande** (10/11/2026, `discovery/3-controller-emulator/`, sur le radiateur, carte de commande débranchée) :
-  - seule, la carte de puissance continue son cycle et ses appels, ne chauffe pas et passe `C7` de `80 E0 40` (arrêt) à `01 E0 38` sans raison connue ; 30 s sans réponse ne changent rien ;
-  - des trames `46` complètes envoyées 5 à 25 ms après `75` ou `C7` sont ignorées (à 5 ms, elles chevauchent son octet d'appel) ;
-  - en répondant à l'octet d'appel 1 bit après, avec les 4 octets seulement, **elle obéit**, aussi vite qu'à la vraie carte : Boost `38 80 80` → `C7 83 E0 98` en 0,3 s (soufflerie en marche) ; arrêt `80 80 80` → `C7 80 E0 40` ; consigne 22 → `C7 01 E0 38` et `67 1F 40`, chauffe douce du fluide ; consigne 10 → `C7 80 E0 38` et `67 80 80`. **`C7` octet 1 `01` = chauffe du fluide**, décidée par la carte de puissance d'après sa propre mesure de température ;
-  - elle tolère des appels sans réponse : l'émulateur n'en a servi qu'un sur deux (lecture de l'octet d'appel par scrutation de la broche, parfois trop tardive) sans effet visible.
-- Pas encore connus : le sens des trames `61`, `67`, `73`, `75`, et où passe la température mesurée par la carte de puissance.
+- Un fil de données, **9 600 bauds, 7 bits + parité impaire**, trames de **5 octets** avec un XOR en somme de contrôle.
+- La **carte de puissance mène** : elle envoie ses trames en boucle et **appelle** la carte de commande par un octet seul, `46`. La carte de commande complète la trame 1 bit plus tard avec son état : **consigne, Boost ou arrêt**.
+- **La carte de puissance obéit à n'importe qui** qui répond correctement à ses appels : consigne, Boost, arrêt, vérifié avec un ESP à la place de la carte de commande. C'est elle qui décide de chauffer, d'après sa propre sonde.
+- **La carte de commande ne se laisse pas piloter** : elle répond à un ESP qui joue la carte de puissance (on lit donc tout ce que fait l'utilisateur), mais rien de ce qu'on lui envoie ne change sa consigne, son mode ni son écran.
+- Conséquence : un **ESP au milieu (MITM)** peut lire les touches et piloter le radiateur, mais **l'écran ne montrera pas ce que décide Home Assistant**. C'est la solution retenue (`architecture.md`).
 
-## Méthode
+## Couche physique
 
-Les mesures, captures et essais, avec les firmwares et les schémas de chaque étape : [`discovery/`](../discovery/README.md).
+| Fil | Rôle | Mesure |
+|---|---|---|
+| noir | GND | — |
+| rouge | VCC, fourni par la carte de puissance | 5,22 V |
+| blanc | DATA, au repos à l'état haut (≈ VCC − 0,3 V) | — |
 
-## Schéma
+- Chaque carte tire DATA à la masse pour émettre (collecteur ouvert). Le rappel à l'état haut vient de la carte de commande : sans elle, il faut une résistance (5 kΩ vers VCC sur le banc).
+- **Le bus est au potentiel du secteur** : entre GND et le neutre, 850 Ω / 1117 Ω selon le sens (0,32 V / 0,72 V en test de diode), OL vers la phase. Rien de relié à la terre ou à un PC ne doit s'y brancher.
+
+## Octets et trames
+
+- **9 600 bauds, 7 bits de données + parité impaire + 1 bit de stop** : une UART 8N1 lit chaque octet avec son bit 7 qui complète à un nombre impair de 1. Vérifié sur les 7 000 trames de la capture guidée, sans exception.
+- **Trame de 5 octets** : en-tête, 3 octets de données, puis le XOR des 3 octets de données (qui a lui aussi la bonne parité).
+- Dans les trames de la carte de puissance, ≈ 7 bits de repos après l'en-tête puis 2 bits entre les octets.
+
+## Le dialogue
+
+Cycle de ≈ 305 ms, en 5 créneaux de ≈ 61 ms, toujours mené par la carte de puissance :
+
+```
+75 ··· [46 + réponse] ······ C7 ··· [46 + réponse] ······ 61 ······ (75 …)
+```
+
+- ≈ 13 ms après `75` et après `C7`, la carte de puissance envoie **l'octet d'appel `46` seul** (toutes les 30 s environ, `70` à la place après un `75`).
+- La carte de commande répond **1 bit après** l'appel, avec les 3 octets de données et la somme de contrôle, enchaînés et sans en-tête. Sur le fil, l'appel et la réponse forment donc une trame `46` complète.
+- De temps en temps, et après chaque changement de la réponse `46`, la carte de puissance glisse la rafale `73`, `67`, `76` dans le cycle ; `76` est suivi d'un appel.
+- **Tolérances mesurées** :
+  - la carte de commande répond à un appel envoyé de 2 à 45 ms après la trame précédente, et ne répond à aucune autre adresse (`00` à `7F` essayés) ;
+  - la carte de puissance ignore une réponse qui arrive 2 ms après son appel : il faut répondre dans le bit qui suit ;
+  - la carte de puissance tolère des appels sans réponse (un sur deux servi, sans effet) ; 30 s sans aucune réponse ne changent rien, au-delà ce n'est pas mesuré ;
+  - seule, sans appel, la carte de commande se tait, et affiche « Err » au bout de quelques minutes.
+
+## Trames connues
+
+Octets donnés avec leur bit de parité, tels qu'on les lit sur le fil.
+
+| En-tête | Émetteur | Données | Sens |
+|---|---|---|---|
+| `46` | appel : carte de puissance ; données : carte de commande | `B0 cc 80` | marche, consigne = `cc` & 0x7F ÷ 2 (14,5 → `9D`, 17 → `A2`, 20,5 → `29`) |
+| | | `38 80 80` | Boost demandé |
+| | | `80 80 80` | arrêt (aussi au démarrage, avant la consigne) |
+| `70` | idem, toutes les 30 s | `83 80 89` | toujours la même, sens inconnu |
+| `C7` | carte de puissance | `80 E0 38` | en marche, ne chauffe pas |
+| | | `01 E0 38` | chauffe du fluide |
+| | | `83 E0 98` | Boost (soufflerie) |
+| | | `80 E0 40` | arrêt |
+| `67` | carte de puissance, après un changement | `80 80 80` / `1F 40 80` | sans chauffe / chauffe ou Boost |
+| `75` | carte de puissance | `83 xx 02` | `xx` varie en continu (de 0 à 127 pendant le Boost) : mesure ou compteur, inconnu |
+| `61` | carte de puissance | `1C xx 80` … | varie, inconnu |
+| `73` | carte de puissance, après un changement | `37 45 02` … | octet 1 entre 55 et 59 : candidate pour une température, inconnu |
+| `76` | carte de puissance, ferme la rafale | `02 80 89` | inconnu |
+
+- La consigne est la **consigne effective** : en Éco, la carte de commande envoie la consigne Éco, sans dire qu'elle est en Éco. Elle ne l'envoie qu'une fois la saisie finie (≈ 5 s après la dernière touche).
+- La durée du Boost (menu expert) et le verrouillage des touches ne passent pas sur le bus : la carte de commande gère son minuteur et n'envoie que « Boost » ou « pas Boost ».
+
+## Qui décide quoi
+
+| | Carte de commande | Carte de puissance |
+|---|---|---|
+| Consigne, Boost, arrêt, programme | **décide** (touches), les envoie dans `46` | exécute ce qu'elle reçoit dans `46`, sans vérifier l'émetteur |
+| Chauffer ou non | — | **décide**, en comparant la consigne à sa propre sonde (`C7` passe à `01`) |
+| Écran | n'affiche que son propre état (consigne, Prog, Éco / Confort / Hors-gel, Boost) | aucune influence : `C7` en Boost, chauffe ou arrêt ne change rien à l'écran |
+
+Essais d'écriture vers la carte de commande (au banc, sans secteur) : chacun des 3 octets de données des trames `C7`, `75`, `61`, `67`, `73`, `76` mis à `00`, à chaque bit seul puis à `7F`, et 120 en-têtes inconnus. **Une seule réaction** : `C7 80 40 38` (octet 2 à `40` au lieu de `E0`) lui fait répondre une fois `46 80 80 80 80`, comme à un redémarrage de la carte de puissance, puis elle revient à son état. Rien d'autre, ni sur le bus, ni à l'écran.
+
+## Ce que ça implique pour le MITM
+
+- **DATA coupé en deux**, GND et VCC traversent. L'ESP joue la carte de puissance côté commande (il appelle, elle répond) et la carte de commande côté puissance (il répond aux appels).
+- **Lecture** : chaque réponse de la carte de commande donne la consigne, le Boost ou l'arrêt choisis aux touches. `C7` dit si le radiateur chauffe.
+- **Écriture** : l'ESP répond ce qu'il veut à la carte de puissance. Par défaut il relaie la carte de commande ; quand Home Assistant impose un état, il l'envoie à la place, jusqu'au prochain changement fait aux touches. L'écran, lui, garde l'état choisi aux touches.
+- **Temps réel** : la réponse doit partir dans le bit qui suit l'appel (≈ 100 µs). Il faut une réception sur interruption ou par UART matérielle, pas une lecture dans la boucle ESPHome.
+- **Sécurité** : si l'ESP tombe, les deux moitiés de DATA ne se parlent plus et le radiateur s'arrête en « Err 10 ». Prévoir un relais à contact repos qui relie DATA directement quand l'ESP n'est pas alimenté ou pas prêt.
+
+## Pas encore connu
+
+- Le sens de `75`, `61`, `73`, `76` et de la réponse `70`, et où passe la température mesurée par la carte de puissance : une capture longue avec une consigne proche de la température de la pièce devrait le montrer.
+- Ce que fait la carte de puissance après un long silence de la carte de commande.
+
+## Carte finale
+
+> La carte dessinée ci-dessous date d'avant le MITM : elle se branche **en dérivation** sur le bus, avec une seule voie de lecture et une seule voie d'émission. Pour le MITM, elle doit passer à **deux voies isolées** (côté commande, côté puissance), un relais de repli qui relie DATA, et une réception assez rapide pour répondre dans le bit (voir `backlog.md`).
 
 Source : `hardware/linap/radiator-controller-linap.kicad_sch` (KiCad 10), rendu ci-dessous ; version interactive sur [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/linap/radiator-controller-linap.kicad_sch).
 
 ![Schéma](../hardware/linap/radiator-controller-linap.svg)
 
-Le montage ne dépend pas des inconnues du bus :
-
-- **J5** se raccorde en dérivation sur les trois fils, dans le boîtier de commande, par un câble 3 conducteurs prévu pour le secteur. Sur la carte, ces fils sont traités comme du 230 V (classe `Linap` : 6 mm de ligne de fuite vers la basse tension ; entre eux, quelques volts seulement).
-- **Lecture** : U3 (H11L1M) s'allume quand DATA est à l'état bas, sa LED alimentée par le fil VCC du radiateur à travers R8. Sa sortie à trigger de Schmitt fait que GPIO3 recopie DATA. Le bus ne voit que le courant de la LED (≈ 2,5 mA) pendant les états bas. **R8 se choisit après avoir mesuré VCC** : (VCC − 1,2 V) / 2,5 mA, soit 1,5 kΩ pour 5 V, 4,3 kΩ pour 12 V. Elle reste non montée jusque-là.
-- **Écriture** : GPIO4 allume U4, dont le transistor tire DATA à la masse à travers R9 (100 Ω), comme n'importe quel nœud d'un bus à collecteur ouvert (UART inversée en émission). Tension supportée : 35 V.
-- **Analyse des trames** : la sortie de U3 est déjà isolée. On lit GPIO3 (ESPHome `uart` avec `debug`, ou un analyseur logique branché sur la broche du C3, côté basse tension), sans analyseur sur le secteur.
-
-Limites : si le bus s'avère piloté en push-pull et non en collecteur ouvert, l'écriture par U4 ne marchera pas telle quelle (la lecture, si). Au-delà de ~20 kbit/s, U4 (LTV-817, quelques µs de commutation) sera trop lent ; U3 tient 1 Mbit/s.
+- **J5** se raccorde sur les trois fils, dans le boîtier de commande, par un câble 3 conducteurs prévu pour le secteur. Sur la carte, ces fils sont traités comme du 230 V (classe `Linap` : 6 mm de ligne de fuite vers la basse tension ; entre eux, quelques volts seulement).
+- **Lecture** : U3 (H11L1M) s'allume quand DATA est à l'état bas, sa LED alimentée par le fil VCC du radiateur à travers R8 (1,5 kΩ pour les 5,22 V mesurés). Sa sortie à trigger de Schmitt fait que GPIO3 recopie DATA. Le bus ne voit que le courant de la LED (≈ 2,5 mA) pendant les états bas.
+- **Écriture** : GPIO4 allume U4, dont le transistor tire DATA à la masse à travers R9 (100 Ω), comme les cartes d'origine (collecteur ouvert, UART inversée en émission).
+- Vitesse : U3 tient 1 Mbit/s, U4 (LTV-817, quelques µs de commutation) ≈ 20 kbit/s, largement assez pour 9 600 bauds.
 
 | C3 super mini | Branché sur |
 |---|---|
@@ -62,7 +111,11 @@ Limites : si le bus s'avère piloté en push-pull et non en collecteur ouvert, l
 
 GPIO3 et GPIO4 ne sont pas des broches de configuration au démarrage de l'ESP32-C3 : pas d'émission parasite sur le bus pendant le boot.
 
-## Nomenclature de la carte finale
+| Dessus | Dessous | Vue 3D |
+|---|---|---|
+| ![Dessus](../hardware/linap/radiator-controller-linap-top.png) | ![Dessous](../hardware/linap/radiator-controller-linap-bottom.png) | ![3D](../hardware/linap/radiator-controller-linap-3d.png) |
+
+### Nomenclature
 
 | Réf. | Composant | Boîtier | LCSC | Rôle |
 |---|---|---|---|---|
@@ -75,7 +128,7 @@ GPIO3 et GPIO4 ne sont pas des broches de configuration au démarrage de l'ESP32
 | J5 | bornier à vis Kefa KF128-5.08-3P-AA | traversant | C474953 | bus Linap : GND (broche 1, pastille carrée), VCC, DATA |
 | U3 | onsemi H11L1M (sortie trigger de Schmitt, 1 Mbit/s, IFT 1,6 mA max, 4,17 kV) | DIP-6 | C16587 | réception isolée → GPIO3 |
 | R5, C1 | 1 kΩ (C1364484, en stock) ; 100 nF X7R TDK FG28X7R1H104KNT06 | axiale ; pas de 5 mm | C342794 | tirage de la sortie de U3 ; découplage |
-| R8 | résistance de la LED de U3, **non montée** : (VCC − 1,2 V) / 2,5 mA | axiale | — | réception |
+| R8 | 1,5 kΩ pour les 5,22 V mesurés, hors panier | axiale | — | LED de U3 : (VCC − 1,2 V) / 2,5 mA |
 | U4 | Lite-On LTV-817-C (phototransistor, 5 kV) | DIP-4 | C109225 | émission isolée (collecteur ouvert sur DATA) |
 | R6 | 220 Ω (en stock) | axiale | C3537012 | LED de U4, depuis GPIO4 |
 | R9 | 100 Ω ¼ W, Yageo MFR-25FBF52-100R | axiale | C6300650 | limite le courant tiré sur DATA |
@@ -84,7 +137,7 @@ Panier LCSC : `hardware/linap/fabrication/radiator-controller-linap-lcsc-cart.cs
 
 ## Sécurité
 
-- **Le bus Linap est au potentiel du secteur** : couper au tableau avant de toucher au boîtier de commande ou à J5. Le câble entre J5 et le boîtier de commande est un câble prévu pour le secteur.
-- Avant tout raccordement, mesurer en isolé le potentiel de la masse de la carte de commande par rapport au neutre. La garantie (2 ans) est perdue dès qu'on ouvre le boîtier de commande.
+- **Le bus Linap est au potentiel du secteur** : couper au tableau avant de toucher au boîtier de commande, à la nappe ou à J5. Le câble entre J5 et le boîtier de commande est un câble prévu pour le secteur.
 - Isolement sur la carte : ≥ 6 mm de ligne de fuite entre le côté secteur (230 V et bus Linap) et la basse tension, fente sous U3 et U4, vérifié par le DRC.
-- Comme sur la carte initiale : C3 flashé en USB avant montage, jamais d'USB branché sur le secteur (la broche `5V` du C3 est reliée au VBUS).
+- Le C3 est flashé en USB avant montage, puis mis à jour uniquement par OTA : jamais d'USB branché sur le secteur (la broche `5V` du C3 est reliée au VBUS).
+- La garantie (2 ans) est perdue dès qu'on ouvre le boîtier de commande.

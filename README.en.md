@@ -2,122 +2,127 @@
 
 [Français](README.md) · **English**
 
-DIY module that drives the **Sauter Marapi tactile 1750 W** electric towel radiator (fan-assisted bathroom heater, anthracite) from Home Assistant, through its French **6-order pilot wire** (*fil pilote*: Comfort, Comfort −1, Comfort −2, Eco, Frost protection, Off).
+Control your Sauter Marapi towel radiator from Home Assistant while keeping its own screen and keys: a small Wi-Fi board sits on the radiator's internal bus.
 
-ESPHome firmware on an ESP32-C3 super mini, two MOC3043 optotriacs + diodes, a fail-safe relay that falls back to Eco, powered from the radiator's own 230 V wall supply. This is the initial board; a final board will go through the radiator's internal bus (Linap) once its protocol is analysed.
+![The Marapi control box, opened](knowledge/photos/command-board-in-box.jpg)
+
+> [!NOTE]
+> **Project status.** The internal bus protocol is decoded, and both halves of the design are proven with an ESP on the bench: it drives the power board on the radiator, and it reads the control box on the bench. The final board, its firmware and its enclosure are still to be done.
+
+## What it does
+
+- **Monitor the radiator**: setpoint, Boost and off as set on the keys, heating in progress.
+- **Control it from Home Assistant**: setpoint, Boost (fan), off.
+- **Keep the original appliance**: the screen and keys keep working as before; the last one to speak, key or Home Assistant, wins.
+- **Fail-safe**: with the board off or broken, a relay joins the radiator's two boards directly, and it works as it did originally.
+
+## Compatibility
+
+Studied on a **Sauter Marapi tactile 1750 W** (750 W fluid element and 1000 W fan), control box `HM011 TD1N01 RAD`. Towel radiators and heaters of the Atlantic group (Atlantic, Thermor, Sauter) that show "Err 10" when their internal ribbon is unplugged probably use the same bus: check with the sniffer in `discovery/`.
+
+## How it works
+
+The radiator has two boards, joined by a three-wire ribbon (ground, 5 V, data):
+
+- the **control box** (screen, capacitive keys) chooses the setpoint, the mode and the Boost;
+- the **power board** heats the fluid and runs the fan, based on its own temperature sensor. It leads the exchange: it **polls** the control box several times a second, and the control box answers with its state.
+
+The board cuts the data wire and sits between the two (*man in the middle*). By default it **relays** every poll and every answer, and Home Assistant sees what happens. On Home Assistant's request it **answers instead of** the control box, until the next key press.
+
+```mermaid
+flowchart LR
+  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>ESPHome]
+  CMD[Control box<br>screen, keys] <-- data --> C3
+  C3 <-- data --> PWR[Power board<br>fluid, fan]
+  PWR -. 5 V and ground, direct .- CMD
+  C3 --- R[Fail-safe relay:<br>joins the data wire<br>when the board stops]
+```
+
+**Limitation**: the control box accepts no order over the bus. Its screen always shows what was set on its keys: a Boost started by Home Assistant does not show there.
+
+## The internal bus in a nutshell
+
+The frame-by-frame details are in [`knowledge/linap.md`](knowledge/linap.md) (in French).
+
+- One data wire, **9600 baud, 7 data bits and odd parity**. Frames are **5 bytes**: a header, 3 data bytes, then their XOR.
+- The power board sends `75`, `C7` and `61` in a loop (305 ms cycle). After `75` and `C7` it sends the lone byte `46`: the poll. The control box answers **within the next bit** with 3 bytes and the checksum:
+
+| Answer to `46` | Meaning |
+|---|---|
+| `B0 cc 80` | on, setpoint = `cc` without its bit 7, divided by 2 |
+| `38 80 80` | Boost |
+| `80 80 80` | off |
+
+- The power board reports its state in `C7`: `80 E0 38` idle, `01 E0 38` heating, `83 E0 98` Boost, `80 E0 40` off.
+- **The power board obeys whoever answers its polls in time.** **The control box cannot be driven**: it only answers the `46` and `70` polls, and none of the 280 or so frames tried changed its setpoint or its screen.
+
+## Decoding the protocol
+
+There is no documentation of this bus. It was decoded with a **Wemos D1 mini** wired to the ribbon, in three stages. The firmwares, the bench schematic and the tools are in [`discovery/`](discovery/README.md) (in French).
+
+| Stage | The ESP… | Result |
+|---|---|---|
+| 1. Listen | listens to the ribbon between both boards | frame format, setpoint, Boost, off |
+| 2. Fake power board | polls the control box alone, on the bench, off mains | it answers with everything done on its keys, but accepts no order |
+| 3. Fake control box | answers the power board, on the radiator | it follows the setpoint, the Boost and off |
 
 > [!WARNING]
-> **Study phase.** The add-on module (schematic, PCB, firmware) has not been built or tested yet: everything about it is **theoretical**. Only the manufacturer data (manual, pilot wire signals) and the photos of the original control board are facts; the reverse engineering leads (Boost key, internal link) are hypotheses. Check everything before building it.
+> **The internal bus is at mains potential.** During the tests on the radiator, the ESP floats at that potential: lab supply with a floating output, Wi-Fi only, never USB nor an earthed device. Switch off the breaker before touching the setup. If in doubt, call an electrician.
 
-**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, fil pilote, pilot wire, Groupe Atlantic, ESPHome, Home Assistant, home automation, ESP32-C3, MOC3043, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, capacitive touch keys, Boost button, Linap link, Err 10.
+## Hardware
 
-## Repository layout
+> [!NOTE]
+> Work in progress. The board drawn in `hardware/linap/` taps the bus in parallel. It has to be redrawn for the man in the middle, with two isolated channels, the fail-safe relay and a receiver fast enough to answer within the bit that follows the poll ([backlog](knowledge/backlog.md), in French).
 
-| Folder | Content |
-|---|---|
-| `firmware/` | ESPHome configuration: `common.yaml` (Wi-Fi, API, OTA, LED, diagnostics), `controlleur-seche-serviettes.yaml` (pilot wire), `secrets.example.yaml` |
-| `hardware/` | KiCad 10, two boards (see *Two boards*): `pilot-wire/` (initial board) and `linap/` (final board), each with a schematic (`.kicad_sch`, `.svg` render), a PCB (`.kicad_pcb`, `-top.png` / `-bottom.png` / `-3d.png` renders) and a `.step` 3D model for the enclosure; `lib/`, shared by both: C3 super mini symbol, footprints (`radiator-controller.pretty/`, generated by `footprints.py`), isolation rules (`isolation.kicad_dru`); `export-fabrication.sh` (fabrication files and LCSC cart) |
-| `enclosure/` | enclosure (to come) |
-| `discovery/` | Linap bus reverse engineering, stage by stage (listen, fake power board, fake command board): ESPHome firmware of each stage, KiCad schematic of the bench (`linap-bench.kicad_sch`), decoder, procedure and bench revisions (`README.md`, in French) |
-| `knowledge/` | design notes, in French: `architecture.md` (roles, contract, safety), `fil-pilote.md` (signals, initial board), `linap.md` (Linap bus, final board), `backlog.md` (including control board reverse engineering), Sauter manual (`manuals/`) |
+What will not change:
 
-## ⚠️ Mains voltage
+- **ESP32-C3 super mini** running ESPHome, plugged into sockets.
+- **Isolated supply** HLK-PM01 (230 V → 5 V), on the towel radiator's wall supply, with a **T1A fuse** and a **varistor**.
+- **Isolated bus** through optocouplers: an H11L1M to read, an LTV-817 to pull the data line low, on each of the two channels.
+- More than **6 mm** between the mains side (230 V and bus) and low voltage on the board.
 
-The module works on 230 V mains, in a bathroom. Read the *Sécurité* section of `knowledge/fil-pilote.md` before wiring anything. Switch off the breaker before any work.
-
-## Pilot wire
-
-The order is the voltage between the pilot wire and neutral:
-
-| Order | Signal |
-|---|---|
-| Comfort | nothing (0 V) |
-| Eco | full 230 V sine wave |
-| Frost protection | negative half-wave only |
-| Off / load shedding | positive half-wave only |
-| Comfort −1 / −2 | 230 V for 3 s / 7 s every 300 s |
-
-On the radiator, select the **Programme Inactif** mode so that it obeys the pilot wire. The Boost (fan) cannot be triggered by the pilot wire: see `knowledge/backlog.md`.
-
-## Two boards
-
-Two boards, developed side by side, on the same C3 and the same power supply.
-
-| Board | Folder | Role | Size |
-|---|---|---|---|
-| **initial** | `hardware/pilot-wire/` | drives the towel rail through the **pilot wire** and triggers the **Boost** by simulating a touch on its key; optional PZEM-004T power meter | 95 × 65 mm, plus the 30 × 13 mm break-off Boost board (95 × 80 mm overall) |
-| **final** | `hardware/linap/` | reads and writes the radiator's internal **Linap bus**, isolated; replaces the pilot wire and the simulated key once the protocol is known | 70 × 54 mm |
-
-The final board is also the analysis tool: it captures the Linap frames through its optocoupler, with no logic analyser on the mains side.
-
-### Initial board: pilot wire and Boost
-
-![Initial board schematic](hardware/pilot-wire/radiator-controller-pilot-wire.svg)
-
-[KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/pilot-wire/radiator-controller-pilot-wire.kicad_sch) · details in `knowledge/fil-pilote.md` (in French).
-
-| C3 super mini | Connected to |
-|---|---|
-| `5V` / `GND` | HLK-PM01 output |
-| `GPIO5` | 220 Ω → MOC3043 U1 (positive half-wave) |
-| `GPIO6` | 220 Ω → MOC3043 U2 (negative half-wave) |
-| `GPIO7` | 1 kΩ → MMBT2222A → relay K1 (normally closed contact = Eco); 10 kΩ pull-down on the base |
-| `GPIO10` | 220 Ω → J6, then a JST PH 2 cable to J8: LED of photoMOS U3 on the Boost board |
-| `GPIO20` / `GPIO21` | J7, PZEM-004T power meter UART (optional) |
-
-| Top | Bottom | 3D |
-|---|---|---|
-| ![Top](hardware/pilot-wire/radiator-controller-pilot-wire-top.png) | ![Bottom](hardware/pilot-wire/radiator-controller-pilot-wire-bottom.png) | ![3D](hardware/pilot-wire/radiator-controller-pilot-wire-3d.png) |
-
-- **Isolation**: relay K1, optotriacs U1 and U2 and the HLK-PM01 straddle the boundary between low voltage (left) and 230 V (right); a 1 mm slot runs under U1 and U2.
-- **SRD relay**: its common pin (230 V) sits between the two coil pins (5 V). A U-shaped slot surrounds it, open only towards the 230 V side, which brings the creepage distance above 6 mm.
-- **Boost board**: below the main board, held by two mouse-bite bridges, it is snapped off by hand before assembly and fits inside the control box, next to the Boost key. It carries J8, photoMOS U3 (DIP-4), two capacitor footprints in parallel (C1, C2) and two solder pads (TP1 key electrode, TP2 control board ground). The radiator side is at mains potential: a 1 mm slot under U3 brings the creepage above 6 mm. U3, C1 and C2 are chosen at the bench and are not in the cart.
-
-### Final board: Linap bus
-
-![Final board schematic](hardware/linap/radiator-controller-linap.svg)
-
-[KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/linap/radiator-controller-linap.kicad_sch) · details in `knowledge/linap.md` (in French).
-
-| C3 super mini | Connected to |
-|---|---|
-| `5V` / `GND` | HLK-PM01 output |
-| `GPIO3` | Linap receive: output of optocoupler U3 (H11L1M), 1 kΩ pull-up |
-| `GPIO4` | Linap transmit: 220 Ω → LED of optocoupler U4 (LTV-817), which pulls DATA low |
-
-| Top | Bottom | 3D |
-|---|---|---|
-| ![Top](hardware/linap/radiator-controller-linap-top.png) | ![Bottom](hardware/linap/radiator-controller-linap-bottom.png) | ![3D](hardware/linap/radiator-controller-linap-3d.png) |
-
-### Shared by both boards
-
-- **C3 super mini**: plugged into two 1×8 SMD sockets (J3, J4) 15.24 mm apart, as on the boiler board, antenna against the top edge. The C3 is not soldered: on the board it is only an outline, with a copper keepout under the antenna. In the schematic, its symbol shows the pins in their physical place, top view, USB up.
-- **Design rules** (`hardware/lib/isolation.kicad_dru`, linked from both projects): 3 mm clearance and 6 mm creepage between the mains side (230 V and Linap bus) and low voltage; 2.5 mm between 230 V conductors, and between them and the Linap bus. For each board, DRC (`kicad-cli pcb drc --schematic-parity`) finds no error, no missing connection and no mismatch with the schematic; silkscreen warnings remain (references cut by the slot or the edge).
-
-### Ordering
-
-`hardware/export-fabrication.sh pilot-wire` (or `linap`, KiCad 10) writes into `hardware/<board>/fabrication/`:
-
-- `…-gerbers.zip`, the JLCPCB fabrication files. The initial board and its Boost board share one outline: check on the quote that JLCPCB does not charge it as a panel;
-- `…-lcsc-cart.csv`, the LCSC cart for LCSC's *BOM Tool*. Disable the `in stock` lines (220 Ω and 1 kΩ resistors already in stock) and, when JLCPCB assembles the board, the `JLCPCB` lines;
-- `…-bom-jlcpcb.csv` and `…-cpl.csv`, for the optional JLCPCB assembly of the SMD parts;
-- `…-bom.csv`, the full bill of materials.
-
-Every part carries its LCSC number in the schematic (`LCSC` field); `split-bom.py` builds the cart from it. Footprints are generated by `hardware/lib/footprints.py` from the part datasheets. Parts, numbers and roles: `knowledge/fil-pilote.md` and `knowledge/linap.md`, *Nomenclature* (in French).
+KiCad 10 projects, shared library and fabrication export: [`hardware/`](hardware/README.md) (in French).
 
 ## Firmware
 
-The current firmware is the initial board's (pilot wire). The final board's waits for the Linap frame analysis.
+The shared ESPHome configuration (Wi-Fi, API, OTA) is in `firmware/`. The final board's firmware is still to be written; meanwhile the bench firmwares run on a D1 mini:
 
 ```sh
 uv tool install esphome
-cp firmware/secrets.example.yaml firmware/secrets.yaml   # then fill in the values
-cd firmware
-esphome run controlleur-seche-serviettes.yaml --device /dev/cu.usbmodemXXXX   # first flash, off mains (hold BOOT while plugging if no port shows up)
-esphome run controlleur-seche-serviettes.yaml --device controlleur-seche-serviettes.local   # then over the air
-esphome logs controlleur-seche-serviettes.yaml --device controlleur-seche-serviettes.local
+cp firmware/secrets.example.yaml firmware/secrets.yaml   # Wi-Fi, API key, OTA password
+esphome run discovery/1-sniffer/linap-sniffer.yaml       # first flash over USB, before any wiring
+esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/decode.py
 ```
 
-## Home Assistant entity
+## In Home Assistant
 
-`select.controlleur_seche_serviettes_pilot_wire_order`: `Comfort`, `Comfort -1`, `Comfort -2`, `Eco`, `Frost protection`, `Off`. On failure, or after 30 min without Home Assistant: `Eco`.
+Planned entities:
+
+| Entity | Use |
+|---|---|
+| Control box setpoint, Boost, off | what is set on the keys |
+| Heating | is the radiator heating? |
+| Imposed mode | relay (default), imposed setpoint, Boost, off |
+| Imposed setpoint | setpoint sent to the power board in imposed mode |
+
+The control box only sends its effective setpoint: in Eco, Home Assistant sees the Eco setpoint, without knowing it is Eco.
+
+## Known limitations
+
+- **Screen not synchronised**: what Home Assistant imposes does not show on the screen.
+- **No temperature** yet: the power board has its sensor, but which frame carries the reading is not known yet.
+- **Warranty**: opening the control box voids the warranty (2 years).
+
+## Going further
+
+- [`knowledge/linap.md`](knowledge/linap.md): the internal bus, frame by frame, and the Linap board.
+- [`knowledge/architecture.md`](knowledge/architecture.md): the board's role, chosen design, rejected options, safety.
+- [`knowledge/backlog.md`](knowledge/backlog.md): what is left to do.
+- [`knowledge/fil-pilote.md`](knowledge/fil-pilote.md): first approach, through the pilot wire, set aside (board `hardware/pilot-wire/`).
+- `knowledge/manuals/`: Sauter manual.
+
+All of `knowledge/` is in French.
+
+---
+
+**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, ESPHome, Home Assistant, home automation, ESP32-C3, ESP32-C3 super mini, HLK-PM01, H11L1M, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.

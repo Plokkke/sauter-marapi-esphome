@@ -1,36 +1,48 @@
-# Architecture et contrat d'interface
+# Architecture
 
 ## Rôles
 
 | Niveau | Projet | Rôle |
 |---|---|---|
-| Sèche-serviettes | Sauter Marapi tactile 1750 W (750 W inertie fluide + 1000 W soufflerie) | thermostat électronique intégré ; en Confort, il régule sur la consigne affichée |
-| Pont | **ce projet** | traduit un ordre choisi dans HA en signal fil pilote 6 ordres |
+| Sèche-serviettes | Sauter Marapi tactile 1750 W (750 W de fluide + 1000 W de soufflerie) | sa carte de commande (écran, touches) choisit consigne, mode et Boost ; sa carte de puissance chauffe d'après sa propre sonde |
+| Pont | **ce projet** | un ESP32-C3 sur le bus Linap interne : lit ce que fait l'utilisateur, impose ce que décide Home Assistant |
 | Maison | automatisation HA (autre projet) | plannings, présence, délestage |
 
-Ce projet ne contient aucune automatisation HA. La liaison est **unidirectionnelle** : le fil pilote ne renvoie ni température, ni état de chauffe, ni défaut.
+Ce projet ne contient aucune automatisation HA.
 
-## Entité exposée
+## Solution retenue : un ESP au milieu du bus Linap
 
-| Entité | Type | Valeurs |
+**Retenu** (11/2026) : un **MITM** sur la nappe entre la carte de commande et la carte de puissance (protocole : `linap.md`).
+
+- DATA est coupé, GND et VCC traversent. L'ESP joue la carte de puissance face à la carte de commande, et la carte de commande face à la carte de puissance : les deux moitiés ont été validées séparément (`discovery/`).
+- **L'écran et les touches d'origine restent** : pas d'interface à refaire.
+- **Par défaut, l'ESP relaie** : le radiateur se comporte exactement comme sans lui.
+- **Home Assistant peut imposer** une consigne, le Boost ou l'arrêt : l'ESP l'envoie à la carte de puissance à la place de l'état de la carte de commande, jusqu'au prochain changement fait aux touches, qui reprend la main.
+- **Limite acceptée : l'écran n'est pas synchronisé.** La carte de commande n'affiche que ce qu'on règle sur ses touches ; un Boost lancé par HA ne s'y voit pas. HA, lui, sait tout : réglages faits aux touches, chauffe en cours.
+
+Écartés :
+
+- **Fil pilote + touche Boost simulée** (`fil-pilote.md`, carte `hardware/pilot-wire/`) : fonctionnait sans rien connaître du radiateur, mais sans retour d'état et avec un faux doigt sur la touche Boost.
+- **Contrôleur maison à la place de la carte de commande** : écran toujours juste, mais toute l'interface (touches, affichage, programme) à refaire. Reste le repli si le MITM échoue.
+
+## Entités prévues
+
+| Entité | Type | Rôle |
 |---|---|---|
-| Pilot wire order | `select` | `Comfort`, `Comfort -1`, `Comfort -2`, `Eco`, `Frost protection`, `Off` |
+| Consigne, Boost, arrêt lus sur la carte de commande | capteurs | ce que l'utilisateur a réglé aux touches |
+| Chauffe en cours | capteur binaire | `C7` de la carte de puissance |
+| Mode imposé | `select` | relais (défaut), consigne imposée, Boost, arrêt |
+| Consigne imposée | `number` | consigne envoyée à la carte de puissance en mode imposé |
 
-L'ordre est restauré après une coupure de courant (`restore_value`). Les températures Confort et Éco se règlent sur l'écran de l'appareil (Éco = Confort − 3,5 °C par défaut, réglable de −1 à −9 °C dans « Abais. T ECO », notice p. 15).
+La carte de commande n'envoie que sa consigne effective : HA voit la consigne Éco quand elle est en Éco, sans le mot « Éco ».
 
-## Sécurité (firmware)
+## Sécurité
 
-- **DÉCIDÉ : repli en Éco**, jamais en Confort (qui chaufferait la salle de bains en continu).
-- Matériel : relais à contact repos ; carte hors tension, en panne ou en démarrage → 230 V sur le fil pilote → Éco.
-- Logiciel : si HA est injoignable pendant **30 min** (depuis le démarrage ou la dernière déconnexion), la carte repasse en `Eco`. L'ordre par défaut, sans valeur restaurée, est aussi `Eco`. `api.reboot_timeout` est désactivé pour éviter un redémarrage en boucle.
+- **Repli matériel** : si l'ESP n'est pas alimenté, plante ou démarre, un relais à contact repos relie directement les deux moitiés de DATA, et le radiateur fonctionne comme d'origine. Sans lui, un ESP en panne mettrait le radiateur en « Err 10 ».
+- **Repli logiciel** : sans HA pendant 30 min, l'ESP revient au relais.
+- **Isolement** : le bus est au potentiel du secteur ; tout ce qui est touchable (USB, boîtier) en est isolé (HLK-PM01, optocoupleurs).
 
 ## Alimentation
 
-- **DÉCIDÉ** : module alimenté par l'arrivée murale du sèche-serviettes (phase + neutre, en aval du différentiel 30 mA de la salle de bains), via un HLK-PM01 protégé par un fusible.
-- Le module s'intercale entre la boîte de raccordement murale et le câble de l'appareil : phase et neutre traversent, le fil noir sort du module.
-
-## Deux cartes
-
-- **DÉCIDÉ** : deux cartes en parallèle, même C3, même alimentation, bibliothèque commune (`hardware/lib/`).
-  - **Carte initiale** (`hardware/pilot-wire/`, `fil-pilote.md`) : fil pilote 6 ordres et appui simulé sur la touche Boost. Fonctionne sans rien connaître du radiateur.
-  - **Carte finale** (`hardware/linap/`, `linap.md`) : lecture et écriture du bus Linap interne, isolées. Sert d'abord à analyser les trames ; une fois le protocole connu, elle remplace la carte initiale : plus de fil pilote ni de touche simulée, et un vrai retour d'état (consigne, mode, Boost, température).
+- Le module est alimenté par l'arrivée murale du sèche-serviettes (phase + neutre, en aval du différentiel 30 mA de la salle de bains), via un HLK-PM01 protégé par un fusible.
+- La nappe se raccorde au module par un câble prévu pour le secteur : un côté vers la carte de commande, un côté vers la carte de puissance.

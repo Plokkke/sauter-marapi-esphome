@@ -22,7 +22,7 @@ NOTES = [
     "Stage 1, sniffer (radiator): J2 taps the ribbon between both boards. J1 powers, JP1 open. Q1 stays off.",
     "Stage 2, power emulator (bench, NO MAINS): J2 to the command board alone. USB powers, J1 unplugged, JP1 closed.",
     "Stage 3, controller emulator (radiator): J2 to the power board alone. J1 powers, JP1 open.",
-    "R7 (not fitted): stage 3 only, if the heartbeat log reads DATA low at idle.",
+    "R7 (crossed: stage 3 only): the command board is the bus pull-up, so the power board alone needs R7.",
     "1. Flash over USB BEFORE wiring, then unplug it for good: never USB while J2 reaches the power board.",
     "2. Lab supply output must float: no earth terminal, no link between - and earth. Set 5.0 V, limit 300 mA.",
     "3. Wire with the breaker OFF. Once powered, touch nothing: read and drive over Wi-Fi only.",

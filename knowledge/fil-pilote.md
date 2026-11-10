@@ -1,5 +1,7 @@
 # Fil pilote : signaux et montage
 
+> **Piste mise de côté** (11/2026) au profit du MITM sur le bus Linap (`architecture.md`). Ce document et la carte `hardware/pilot-wire/` restent comme référence : signaux du fil pilote d'après la notice, carte dessinée mais jamais fabriquée.
+
 Source : notice Sauter Marapi tactile (`manuals/sauter-marapi-tactile-notice-fr.pdf`, p. 8 et 20, réf. U0708012-D).
 
 ## Câble de l'appareil
@@ -54,6 +56,25 @@ Un relais 5 V **à contact repos (NC)** relie la phase au fil pilote : au repos,
 - GPIO5, GPIO6 et GPIO7 ne sont pas des broches de configuration au démarrage de l'ESP32-C3 (contrairement à GPIO2, GPIO8 et GPIO9), mais elles peuvent flotter ou porter un faible tirage pendant le boot. R4 (10 kΩ) tient la base de Q1 à la masse : K1 reste au repos, donc Éco, pendant le démarrage. Un tirage faible (≈ 50 µA) reste très loin du seuil des MOC3043 (5 mA).
 - LED des MOC3043 : (3,3 − 1,3) / 220 ≈ 9 mA (seuil 5 mA max, 12 mA max par GPIO).
 - L'entrée fil pilote consomme quelques mA : la sortie des MOC3043 (100 mA) suffit, sans triac de puissance.
+
+| C3 super mini | Branché sur |
+|---|---|
+| `5V` / `GND` | sortie du HLK-PM01 |
+| `GPIO5` | 220 Ω → MOC3043 U1 (alternance positive) |
+| `GPIO6` | 220 Ω → MOC3043 U2 (alternance négative) |
+| `GPIO7` | 1 kΩ → MMBT2222A → relais K1 (contact repos = Éco) ; 10 kΩ de rappel à la masse sur la base |
+| `GPIO10` | 220 Ω → J6, puis câble JST PH 2 vers J8 : LED du photoMOS U3 de la carte Boost |
+| `GPIO20` / `GPIO21` | J7, UART du compteur PZEM-004T (facultatif) |
+
+| Dessus | Dessous | Vue 3D |
+|---|---|---|
+| ![Dessus](../hardware/pilot-wire/radiator-controller-pilot-wire-top.png) | ![Dessous](../hardware/pilot-wire/radiator-controller-pilot-wire-bottom.png) | ![3D](../hardware/pilot-wire/radiator-controller-pilot-wire-3d.png) |
+
+- **Isolement** : relais K1, optotriacs U1 et U2 et HLK-PM01 sont alignés à cheval sur la frontière entre basse tension (à gauche) et 230 V (à droite) ; une fente de 1 mm passe sous U1 et U2.
+- **Relais SRD** : son commun (230 V) est placé entre les deux broches de bobine (5 V). Une fente en U l'entoure et ne s'ouvre que côté 230 V, ce qui porte la ligne de fuite au-delà de 6 mm.
+- **Carte Boost** : sous la carte, reliée par deux ponts à perforations (*mouse bites*), elle se casse à la main avant montage et se loge dans le boîtier de commande, contre la touche Boost (voir *Boost et compteur*).
+
+Firmware : `firmware/controlleur-seche-serviettes.yaml`, qui expose `select.controlleur_seche_serviettes_pilot_wire_order` (`Comfort`, `Comfort -1`, `Comfort -2`, `Eco`, `Frost protection`, `Off`). En panne ou sans HA pendant 30 min : `Eco`.
 
 ## Nomenclature de la carte initiale
 
