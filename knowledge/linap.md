@@ -92,54 +92,8 @@ Essais d'écriture vers la carte de commande (au banc, sans secteur) : chacun de
 - Le sens de `75`, `61`, `73`, `76` et de la réponse `70`, et où passe la température mesurée par la carte de puissance : une capture longue avec une consigne proche de la température de la pièce devrait le montrer.
 - Ce que fait la carte de puissance après un long silence de la carte de commande.
 
-## Carte finale
-
-> La carte dessinée ci-dessous (sur un ESP32-C3 super mini) date d'avant le MITM, et la nouvelle passera à un D1 mini alimenté par la nappe (`architecture.md`) : elle se branche **en dérivation** sur le bus, avec une seule voie de lecture et une seule voie d'émission. Pour le MITM, elle doit passer à **deux voies** (côté commande, côté puissance) et une réception assez rapide pour répondre dans le bit (voir `backlog.md`).
-
-Source : `hardware/linap/radiator-controller-linap.kicad_sch` (KiCad 10), rendu ci-dessous ; version interactive sur [KiCanvas](https://kicanvas.org/?github=https://github.com/Plokkke/sauter-marapi-esphome/blob/main/hardware/linap/radiator-controller-linap.kicad_sch).
-
-![Schéma](../hardware/linap/radiator-controller-linap.svg)
-
-- **J5** se raccorde sur les trois fils, dans le boîtier de commande, par un câble 3 conducteurs prévu pour le secteur. Sur la carte, ces fils sont traités comme du 230 V (classe `Linap` : 6 mm de ligne de fuite vers la basse tension ; entre eux, quelques volts seulement).
-- **Lecture** : U3 (H11L1M) s'allume quand DATA est à l'état bas, sa LED alimentée par le fil VCC du radiateur à travers R8 (1,5 kΩ pour les 5,22 V mesurés). Sa sortie à trigger de Schmitt fait que GPIO3 recopie DATA. Le bus ne voit que le courant de la LED (≈ 2,5 mA) pendant les états bas.
-- **Écriture** : GPIO4 allume U4, dont le transistor tire DATA à la masse à travers R9 (100 Ω), comme les cartes d'origine (collecteur ouvert, UART inversée en émission).
-- Vitesse : U3 tient 1 Mbit/s, U4 (LTV-817, quelques µs de commutation) ≈ 20 kbit/s, largement assez pour 9 600 bauds.
-
-| C3 super mini | Branché sur |
-|---|---|
-| `5V` / `GND` | sortie du HLK-PM01 |
-| `GPIO3` | sortie de U3, tirage R5 1 kΩ vers 3,3 V, découplage C1 |
-| `GPIO4` | R6 220 Ω → LED de U4 (≈ 9 mA) |
-
-GPIO3 et GPIO4 ne sont pas des broches de configuration au démarrage de l'ESP32-C3 : pas d'émission parasite sur le bus pendant le boot.
-
-| Dessus | Dessous | Vue 3D |
-|---|---|---|
-| ![Dessus](../hardware/linap/radiator-controller-linap-top.png) | ![Dessous](../hardware/linap/radiator-controller-linap-bottom.png) | ![3D](../hardware/linap/radiator-controller-linap-3d.png) |
-
-### Nomenclature
-
-| Réf. | Composant | Boîtier | LCSC | Rôle |
-|---|---|---|---|---|
-| MOD1 | ESP32-C3 super mini, enfiché sur J3 et J4 | module | — | Wi-Fi, ESPHome |
-| J3, J4 | barrette femelle CMS 1×8 hanxia HX PM2.54-1x8P TP H8.5-ZQ | CMS | C48641756 | support du C3 |
-| PS1 | Hi-Link HLK-PM01 (230 V → 5 V, 3 W) | traversant | C209903 | alimentation isolée |
-| F1 | support TR5 Littelfuse 56000001009 + fusible TR5 T1A 250 V temporisé Littelfuse 37211000001 | traversant | C142909 + C142808 | protection du module |
-| RV1 | varistance Bourns MOV-07D431K (275 V AC) | traversant | C1528105 | surtensions, entre phase et neutre |
-| J1 | bornier à vis Kefa KF128-5.08-2P-AA | traversant | C474952 | phase et neutre |
-| J5 | bornier à vis Kefa KF128-5.08-3P-AA | traversant | C474953 | bus Linap : GND (broche 1, pastille carrée), VCC, DATA |
-| U3 | onsemi H11L1M (sortie trigger de Schmitt, 1 Mbit/s, IFT 1,6 mA max, 4,17 kV) | DIP-6 | C16587 | réception isolée → GPIO3 |
-| R5, C1 | 1 kΩ (C1364484, en stock) ; 100 nF X7R TDK FG28X7R1H104KNT06 | axiale ; pas de 5 mm | C342794 | tirage de la sortie de U3 ; découplage |
-| R8 | 1,5 kΩ pour les 5,22 V mesurés, hors panier | axiale | — | LED de U3 : (VCC − 1,2 V) / 2,5 mA |
-| U4 | Lite-On LTV-817-C (phototransistor, 5 kV) | DIP-4 | C109225 | émission isolée (collecteur ouvert sur DATA) |
-| R6 | 220 Ω (en stock) | axiale | C3537012 | LED de U4, depuis GPIO4 |
-| R9 | 100 Ω ¼ W, Yageo MFR-25FBF52-100R | axiale | C6300650 | limite le courant tiré sur DATA |
-
-Panier LCSC : `hardware/linap/fabrication/radiator-controller-linap-lcsc-cart.csv`, produit par `hardware/export-fabrication.sh linap` (voir le README, *Commander*). Stocks relevés le 27/10/2026.
-
 ## Sécurité
 
-- **Le bus Linap est au potentiel du secteur** : couper au tableau avant de toucher au boîtier de commande, à la nappe ou à J5. Le câble entre J5 et le boîtier de commande est un câble prévu pour le secteur.
-- Isolement sur la carte : ≥ 6 mm de ligne de fuite entre le côté secteur (230 V et bus Linap) et la basse tension, fente sous U3 et U4, vérifié par le DRC.
-- Le C3 est flashé en USB avant montage, puis mis à jour uniquement par OTA : jamais d'USB branché sur le secteur (la broche `5V` du C3 est reliée au VBUS).
+- **Le bus est au potentiel du secteur** : couper au tableau avant de toucher au boîtier de commande ou à la nappe.
+- Tout ce qui s'y branche flotte à ce potentiel : jamais d'USB, d'appareil relié à la terre ni de PC dessus. Les ESP s'y flashent en USB avant d'être câblés, puis se mettent à jour en Wi-Fi.
 - La garantie (2 ans) est perdue dès qu'on ouvre le boîtier de commande.

@@ -73,7 +73,7 @@ Aucune documentation n'existe sur ce bus. Il a été décodé avec un **Wemos D1
 ## Le matériel
 
 > [!NOTE]
-> En cours de conception. La carte dessinée dans `hardware/linap/` se branche en dérivation sur le bus. Elle doit être redessinée pour l'intermédiaire, avec deux voies et une réception assez rapide pour répondre dans le bit qui suit l'appel ([backlog](knowledge/backlog.md)).
+> En cours de conception : la carte reste à dessiner, avec deux voies et une réception assez rapide pour répondre dans le bit qui suit l'appel ([backlog](knowledge/backlog.md)).
 
 Ce qui ne changera pas :
 
@@ -81,8 +81,6 @@ Ce qui ne changera pas :
 - **Alimentée par la nappe** : le 5 V de la carte de puissance tient ≈ 160 mA en tout, et un D1 mini avec le boîtier de commande en prend ≈ 120 (VCC à 5,11 V, démarrages du radiateur et Boost validés). Plus de 230 V à raccorder. Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes du Wi-Fi.
 - **Sur chaque voie**, le montage du banc : un pont diviseur pour lire DATA, un transistor NPN pour la tirer à la masse.
 - **Toute la carte est au potentiel du secteur**, comme le boîtier de commande : elle doit être entièrement enfermée, sans rien de touchable, et se mettre à jour par Wi-Fi seulement.
-
-Projets KiCad 10, bibliothèque commune et export de fabrication : [`hardware/`](hardware/README.md).
 
 ## Firmware
 
@@ -116,7 +114,7 @@ Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assis
 
 ## Pour aller plus loin
 
-- [`knowledge/linap.md`](knowledge/linap.md) : le bus interne, trame par trame, et la carte Linap.
+- [`knowledge/linap.md`](knowledge/linap.md) : le bus interne, trame par trame.
 - [`knowledge/architecture.md`](knowledge/architecture.md) : rôle de la carte, solution retenue, pistes écartées, sécurité.
 - [`knowledge/backlog.md`](knowledge/backlog.md) : ce qui reste à faire.
 - `knowledge/manuals/` : notice Sauter.

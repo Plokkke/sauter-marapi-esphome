@@ -73,7 +73,7 @@ There is no documentation of this bus. It was decoded with a **Wemos D1 mini** w
 ## Hardware
 
 > [!NOTE]
-> Work in progress. The board drawn in `hardware/linap/` taps the bus in parallel. It has to be redrawn for the man in the middle, with two channels and a receiver fast enough to answer within the bit that follows the poll ([backlog](knowledge/backlog.md), in French).
+> Work in progress: the board is still to be drawn, with two channels and a receiver fast enough to answer within the bit that follows the poll ([backlog](knowledge/backlog.md), in French).
 
 What will not change:
 
@@ -81,8 +81,6 @@ What will not change:
 - **Powered by the ribbon**: the power board's 5 V holds about 160 mA in total, and a D1 mini plus the control box draw about 120 (VCC at 5.11 V, radiator power-ups and Boost validated). No more 230 V wiring. A 470 to 1000 µF capacitor next to the ESP absorbs the Wi-Fi peaks.
 - **On each channel**, the bench circuit: a voltage divider to read DATA, an NPN transistor to pull it low.
 - **The whole board is at mains potential**, like the control box: it must be fully enclosed, with nothing touchable, and updated over Wi-Fi only.
-
-KiCad 10 projects, shared library and fabrication export: [`hardware/`](hardware/README.md) (in French).
 
 ## Firmware
 
@@ -116,7 +114,7 @@ The control box only sends its effective setpoint: in Eco, Home Assistant sees t
 
 ## Going further
 
-- [`knowledge/linap.md`](knowledge/linap.md): the internal bus, frame by frame, and the Linap board.
+- [`knowledge/linap.md`](knowledge/linap.md): the internal bus, frame by frame.
 - [`knowledge/architecture.md`](knowledge/architecture.md): the board's role, chosen design, rejected options, safety.
 - [`knowledge/backlog.md`](knowledge/backlog.md): what is left to do.
 - `knowledge/manuals/`: Sauter manual.

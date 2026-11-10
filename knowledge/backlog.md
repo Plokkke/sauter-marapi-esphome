@@ -10,7 +10,7 @@
 
 ## Carte MITM
 
-- [ ] Redessiner `hardware/linap/` pour le MITM :
+- [ ] Dessiner la carte MITM (`hardware/`, règles de dessin dans `CLAUDE.md`) :
   - sur un D1 mini alimenté par la nappe, avec un condensateur de 470 à 1000 µF ;
   - deux voies, côté commande et côté puissance, chacune avec le montage du banc (pont diviseur en lecture, NPN en émission) ;
   - le rappel de DATA à l'état haut côté carte de puissance (≈ 5 kΩ vers VCC), que la carte de commande ne fait plus ;
