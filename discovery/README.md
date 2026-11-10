@@ -5,7 +5,7 @@ Comment le protocole du bus Linap a été trouvé, et les outils pour refaire ch
 | Étape | Dossier | Rôle de l'ESP | Où | État |
 |---|---|---|---|---|
 | 1 | [`1-sniffer/`](1-sniffer/) | écoute la nappe entre les deux cartes | radiateur | fait, protocole de base décodé |
-| 2 | [`2-power-emulator/`](2-power-emulator/) | joue la carte de puissance face à la carte de commande seule | bureau, sans secteur | firmware prêt, en attente du transistor Q1 |
+| 2 | [`2-power-emulator/`](2-power-emulator/) | joue la carte de puissance face à la carte de commande seule | bureau, sans secteur | fait : la carte de commande ne répond pas |
 | 3 | [`3-controller-emulator/`](3-controller-emulator/) | joue la carte de commande face à la carte de puissance seule | radiateur | à faire |
 
 Les résultats (format des trames, consigne, Boost…) sont dans `knowledge/linap.md` ; ce fichier décrit la méthode.
@@ -74,7 +74,8 @@ Résultat (07/11/2026) : 9 600 bauds 8N1, trames de 5 octets avec XOR, qui parle
 Question : la carte de commande accepte-t-elle un maître qui n'est pas la vraie carte de puissance, et suit-elle un état qu'elle n'a pas demandé, comme un Boost annoncé par `C7 83 E0 98` ?
 
 - **Sans secteur** : la carte de commande seule, débranchée du radiateur, prend son 5 V sur le D1 mini alimenté en USB (JP1 fermé, J1 débranchée).
-- Firmware : `linap-power-emulator.yaml`. L'ESP envoie le cycle `75`, `C7`, `61` toutes les 95 ms et décode les réponses.
+- Firmware : `linap-power-emulator.yaml`. L'ESP reproduit le cycle de la vraie carte (5 créneaux de 61 ms : `75`, réponse, `C7`, réponse, `61`, octets espacés comme les siens) et décode les réponses.
+- Résultat (10/11/2026) : nos trames sont relues identiques aux vraies, mais la carte de commande ne répond jamais (détail dans `knowledge/linap.md`). Étape laissée de côté au profit de l'étape 3.
 - Page `http://linap-power-emulator.local` : marche/arrêt de l'interrogation ; état `C7` envoyé à chaque cycle (normal, Boost, chauffe, arrêt) ; ack Boost envoyé une seule fois ; envoi d'une trame quelconque (4 octets, somme de contrôle ajoutée) ; dernière trame `46` décodée.
 - Contrôle du câblage : toutes les 10 s, le log `bus` compte nos trames entendues en retour sur DATA (0 = Q1 ne tire pas DATA) et les trames de la carte de commande.
 
@@ -82,13 +83,13 @@ Déroulé : `esphome run discovery/2-power-emulator/linap-power-emulator.yaml` e
 
 ## Étape 3 : fausse carte de commande (`3-controller-emulator/`)
 
-Question : la carte de puissance obéit-elle à une carte de commande qui n'est pas la vraie (consigne, demande de chauffe, Boost, arrêt), et que fait-elle si personne ne répond ?
+Question : la carte de puissance obéit-elle à une carte de commande qui n'est pas la vraie (consigne, Boost, arrêt), et que fait-elle si personne ne répond ?
 
 - Sur le radiateur, **carte de commande débranchée** : l'ESP flotte au potentiel du secteur, alimentation de labo, JP1 ouvert, **jamais d'USB** (mêmes règles qu'à l'étape 1). R7 n'est montée que si le heartbeat lit DATA à l'état bas au repos.
 - Firmware : `linap-controller-emulator.yaml`. L'ESP répond comme la vraie carte (capture guidée) : `46` après `75`, `C7` et `76`, `70` à la place de `46` après un `75` toutes les 30 s environ, rien après `61`, `73`, `67`.
-- Page `http://linap-controller-emulator.local` : réponse marche/arrêt ; mode (normal, Boost, arrêt) ; consigne ; bit de demande de chauffe, réglable à part pour savoir qui décide de chauffer ; envoi d'une trame quelconque à la place de la prochaine réponse ; dernières trames `C7` et `73` décodées.
+- Page `http://linap-controller-emulator.local` : réponse marche/arrêt ; mode (normal, Boost, arrêt) ; consigne (bit 7 de parité recalculé) ; envoi d'une trame quelconque à la place de la prochaine réponse ; dernières trames `C7` et `73` décodées.
 
-Essais prévus : consigne haute sans demande, puis demande avec consigne basse (qui décide de chauffer ?) ; Boost et arrêt ; réponse coupée (quelle erreur, et reprise ?) ; suivre `73` pendant une chauffe.
+Essais prévus : la carte de puissance seule interroge-t-elle le bus (DATA au repos à l'état haut, sinon R7) ; consigne haute puis basse (qui décide de chauffer ?) ; Boost et arrêt ; réponse coupée (quelle erreur, et reprise ?) ; suivre `73` pendant une chauffe.
 
 ## Évolution du montage
 

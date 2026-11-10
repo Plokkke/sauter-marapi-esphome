@@ -21,7 +21,9 @@ remote_receiver:
           if (id(answering).state) {
             const linap::Frame reply = command_board.reply_to(frame, millis());
             if (!reply.empty()) {
-              id(uart_bus).write_array(reply.data(), reply.size());
+              delay(id(reply_delay).state);
+              linap::write_paced(id(uart_bus), reply, linap::COMMAND_BOARD_PACING,
+                                 [](uint32_t us) { delayMicroseconds(us); });
               linap_bus.sent(reply);
             }
           }
@@ -43,16 +45,6 @@ switch:
       - logger.log: {level: INFO, tag: action, format: "answering on"}
     on_turn_off:
       - logger.log: {level: INFO, tag: action, format: "answering off"}
-  - platform: template
-    name: Heat demand (46 bit 7 = 0)
-    optimistic: true
-    restore_mode: ALWAYS_OFF
-    on_turn_on:
-      - lambda: command_board.heat_demand = true;
-      - logger.log: {level: INFO, tag: action, format: "heat demand on"}
-    on_turn_off:
-      - lambda: command_board.heat_demand = false;
-      - logger.log: {level: INFO, tag: action, format: "heat demand off"}
 
 select:
   - platform: template
@@ -79,6 +71,20 @@ number:
       - lambda: |-
           command_board.setpoint = x;
           ESP_LOGI("action", "setpoint %.1f: %s", x, linap::describe(command_board.state()).c_str());
+  # Added to the 3 ms the receiver needs to see the end of a frame. The real command board answers more than
+  # 10 ms after the frame (never merged with it in the 10 ms bursts of the sniffer), before the next slot (61 ms).
+  - platform: template
+    id: reply_delay
+    name: Reply delay
+    optimistic: true
+    min_value: 0
+    max_value: 50
+    step: 1
+    initial_value: 20
+    unit_of_measurement: ms
+    mode: box
+    on_value:
+      - logger.log: {level: INFO, tag: action, format: "reply delay %.0f ms", args: [x]}
 
 text_sensor:
   - platform: template

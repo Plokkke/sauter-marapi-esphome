@@ -25,14 +25,17 @@ remote_receiver:
         });
 
 interval:
-  - interval: 95ms # 3 slots: one cycle every ~285 ms, as on the radiator
+  - interval: 61ms # one slot of the 305 ms cycle (power-board.h)
     then:
       - lambda: |-
           if (!id(polling).state && !linap_bus.has_pending())
             return;
           const bool injected = linap_bus.has_pending();
           const linap::Frame frame = power_board.next();
-          id(uart_bus).write_array(frame.data(), frame.size());
+          if (frame.empty())
+            return;
+          linap::write_paced(id(uart_bus), frame, linap::POWER_BOARD_PACING,
+                             [](uint32_t us) { delayMicroseconds(us); });
           linap_bus.sent(frame);
           if (injected)
             ESP_LOGI("tx", "injected %s", linap::hex(frame).c_str());

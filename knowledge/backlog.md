@@ -17,7 +17,7 @@
   - [x] Mesures au multimètre (07/11/2026) : fils, VCC 5,22 V (R8 = 1,5 kΩ), bus au potentiel du secteur.
   - [x] Format du bus et premières trames (07/11/2026) : 9 600 bauds 8N1, trames de 5 octets, consigne et Boost identifiés (`linap.md`).
   - [ ] Capture longue (20-30 min, consigne haute, sans toucher) : trouver la température ambiante et l'état de chauffe.
-  - [ ] Banc sans secteur (`discovery/2-power-emulator/`) : l'ESP joue la carte de puissance face à la carte de commande seule ; accepte-t-elle nos interrogations, affiche-t-elle un Boost non demandé (`C7 83 E0 98`) ? Firmware prêt ; il manque le transistor Q1 du banc pour tirer DATA.
+  - [x] Banc sans secteur (`discovery/2-power-emulator/`, 10/11/2026) : l'ESP joue la carte de puissance face à la carte de commande seule. Trames identiques aux vraies, mais la carte de commande ne répond jamais et n'affiche pas le Boost annoncé ; cause inconnue, piste MITM en suspens.
   - [ ] Sur le radiateur, carte de commande débranchée (`discovery/3-controller-emulator/`) : l'ESP flottant (Wi-Fi) joue la carte de commande ; la carte de puissance obéit-elle à nos consignes, au Boost, à l'arrêt ? Firmware prêt.
   - [ ] MITM : rallonge de nappe avec DATA coupé, ESP au milieu sur deux ports série. **Repli** : contrôleur maison remplaçant la carte de commande, avec boutons et LED (Boost, chauffe, marche/arrêt) en plus de HA. Dans les deux cas, partie touchable isolée du bus (HLK-PM01 + optocoupleurs, deux voies pour le MITM).
 - [ ] Côté HA : entité `climate` (sonde de pièce + thermostat HA qui bascule Confort / Éco), dans le projet d'automatisation.

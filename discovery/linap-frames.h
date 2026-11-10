@@ -23,8 +23,33 @@ inline Frame with_checksum(Frame frame) {
   return frame;
 }
 
+// Each byte is 7 data bits plus an odd parity bit (bit 7): every byte of the captures has an odd number of ones
+inline uint8_t with_parity(uint8_t data) {
+  data &= 0x7F;
+  return __builtin_parity(data) ? data : data | 0x80;
+}
+
+// Checksum and parity; the XOR of three odd bytes is odd, so a valid checksum byte has its parity too
 inline bool checksum_ok(const Frame &frame) {
-  return frame.size() == FRAME_SIZE && (frame[1] ^ frame[2] ^ frame[3]) == frame[4];
+  return frame.size() == FRAME_SIZE && (frame[1] ^ frame[2] ^ frame[3]) == frame[4] &&
+         std::all_of(frame.begin(), frame.end(), [](uint8_t byte) { return __builtin_parity(byte) == 1; });
+}
+
+// Idle time inside a frame, in bit times, as measured on the radiator (capture of 07/11/2026)
+struct Pacing {
+  int after_header;
+  int between_bytes;
+};
+static const Pacing POWER_BOARD_PACING{7, 2};
+static const Pacing COMMAND_BOARD_PACING{1, 0};
+
+// One byte at a time, each written once the previous one is out: the UART FIFO would send them back to back
+template<typename Uart, typename DelayUs> void write_paced(Uart *uart, const Frame &frame, Pacing pacing, DelayUs delay_us) {
+  for (size_t i = 0; i < frame.size(); i++) {
+    uart->write_byte(frame[i]);
+    if (i + 1 < frame.size())
+      delay_us(lroundf(BIT_US * (10 + (i == 0 ? pacing.after_header : pacing.between_bytes))));
+  }
 }
 
 // "C7 83 E0 98" (header + 3 data bytes, hex) -> frame with its checksum; empty when the text is not that
@@ -75,15 +100,14 @@ inline Frame known(uint8_t header, const std::string &name) {
 inline std::string describe(const Frame &frame) {
   const std::string text = hex(frame);
   if (!checksum_ok(frame))
-    return text + " (bad checksum)";
+    return text + " (bad checksum or parity)";
   for (const KnownFrame &entry : KNOWN_FRAMES)
     if (parse(entry.data) == frame)
       return text + ": " + entry.name;
   if (frame[0] != 0x46 || frame[1] != 0xB0)
     return text;
-  char meaning[48];
-  snprintf(meaning, sizeof meaning, ": setpoint %.1f, %s", (frame[2] & 0x7F) / 2.0f,
-           frame[2] & 0x80 ? "no heat demand" : "heat demand");
+  char meaning[32];
+  snprintf(meaning, sizeof meaning, ": setpoint %.1f", (frame[2] & 0x7F) / 2.0f);
   return text + meaning;
 }
 

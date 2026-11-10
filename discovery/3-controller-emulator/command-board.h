@@ -8,13 +8,11 @@ class CommandBoard {
  public:
   std::string mode = "normal";  // normal, boost or off
   float setpoint = 14.5f;
-  bool heat_demand = false;
 
   linap::Frame state() const {
     if (this->mode != "normal")
       return linap::known(0x46, this->mode);
-    const uint8_t value = lroundf(this->setpoint * 2) | (this->heat_demand ? 0 : 0x80);
-    return linap::with_checksum({0x46, 0xB0, value, 0x80});
+    return linap::with_checksum({0x46, 0xB0, linap::with_parity(lroundf(this->setpoint * 2)), 0x80});
   }
 
   // Frame to send after this power board frame; empty when the real command board stays silent
