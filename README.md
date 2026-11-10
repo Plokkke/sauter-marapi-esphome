@@ -7,7 +7,7 @@ Pilotez votre sèche-serviettes Sauter Marapi depuis Home Assistant, en gardant 
 ![Boîtier de commande du Marapi, ouvert](knowledge/photos/command-board-in-box.jpg)
 
 > [!NOTE]
-> **État du projet.** Le protocole du bus interne est décodé, et les deux moitiés du montage sont validées avec un ESP sur table : il pilote la carte de puissance sur le radiateur, et il lit le boîtier de commande au banc. La carte définitive, son firmware et son boîtier restent à faire.
+> **État du projet.** Le protocole du bus interne est décodé, et les deux moitiés du montage sont validées avec un ESP sur table : il pilote la carte de puissance sur le radiateur, et il lit le boîtier de commande au banc. Le firmware Rust de la carte est écrit et compile, pas encore essayé sur le radiateur ; la carte définitive et son boîtier restent à faire.
 
 ## Ce que ça permet
 
@@ -84,7 +84,13 @@ Ce qui ne changera pas :
 
 ## Firmware
 
-Le firmware de la carte sera écrit en **Rust** pour l'ESP32-C3, dans `firmware/` (à venir) : logique des trames testée sur ordinateur, réponse aux appels sur interruption, liaison avec Home Assistant.
+Le firmware de la carte est en **Rust** pour l'ESP32-C3, dans [`firmware/`](firmware/README.md) : logique des trames testée sur ordinateur (`linap/`), réponse aux appels sur interruption et liaison MQTT avec Home Assistant (`mitm/`).
+
+```sh
+cp firmware/secrets.example.env firmware/secrets.env   # Wi-Fi et compte MQTT
+(cd firmware/linap && cargo test)
+(cd firmware/mitm && cargo run --release)             # flash en USB, avant tout câblage
+```
 
 Les firmwares du banc, eux, sont des configurations ESPHome pour D1 mini, dans `discovery/` :
 
@@ -97,14 +103,16 @@ esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/tools/decode.py
 
 ## Dans Home Assistant
 
-Entités prévues :
+Par découverte MQTT (détail : [`firmware/README.md`](firmware/README.md)) :
 
 | Entité | Usage |
 |---|---|
-| Consigne, Boost, arrêt du boîtier de commande | ce qui est réglé sur les touches |
-| Chauffe | le radiateur chauffe-t-il ? |
-| Mode imposé | transparent (par défaut), consigne imposée, Boost, arrêt |
-| Consigne imposée | consigne envoyée à la carte de puissance en mode imposé |
+| Keys mode, Keys setpoint | ce qui est réglé sur les touches |
+| Power board, Heating | ce que fait la carte de puissance : attente, chauffe, Boost, arrêt |
+| Control | `relay` (les touches, par défaut), `setpoint`, `boost`, `off` (imposés) |
+| Setpoint | la consigne en vigueur ; la régler depuis Home Assistant l'impose |
+
+Le dernier ordre gagne : un ordre de Home Assistant remplace celui des touches, et le prochain changement fait aux touches reprend la main.
 
 Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assistant voit la consigne Éco, sans savoir que c'est l'Éco.
 

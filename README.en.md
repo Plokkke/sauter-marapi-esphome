@@ -7,7 +7,7 @@ Control your Sauter Marapi towel radiator from Home Assistant while keeping its 
 ![The Marapi control box, opened](knowledge/photos/command-board-in-box.jpg)
 
 > [!NOTE]
-> **Project status.** The internal bus protocol is decoded, and both halves of the design are proven with an ESP on the bench: it drives the power board on the radiator, and it reads the control box on the bench. The final board, its firmware and its enclosure are still to be done.
+> **Project status.** The internal bus protocol is decoded, and both halves of the design are proven with an ESP on the bench: it drives the power board on the radiator, and it reads the control box on the bench. The Rust firmware of the board is written and builds, not yet tried on the radiator; the final board and its enclosure are still to be done.
 
 ## What it does
 
@@ -84,7 +84,13 @@ What will not change:
 
 ## Firmware
 
-The board's firmware will be written in **Rust** for the ESP32-C3, in `firmware/` (to come): frame logic tested on a computer, interrupt-driven answers to the polls, link to Home Assistant.
+The board's firmware is in **Rust** for the ESP32-C3, in [`firmware/`](firmware/README.md) (in French): frame logic tested on a computer (`linap/`), interrupt-driven answers to the polls and MQTT link to Home Assistant (`mitm/`).
+
+```sh
+cp firmware/secrets.example.env firmware/secrets.env   # Wi-Fi and MQTT account
+(cd firmware/linap && cargo test)
+(cd firmware/mitm && cargo run --release)             # USB flash, before any wiring
+```
 
 The bench firmwares are ESPHome configurations for a D1 mini, in `discovery/`:
 
@@ -97,14 +103,16 @@ esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/tools/decode.py
 
 ## In Home Assistant
 
-Planned entities:
+Through MQTT discovery (details: [`firmware/README.md`](firmware/README.md)):
 
 | Entity | Use |
 |---|---|
-| Control box setpoint, Boost, off | what is set on the keys |
-| Heating | is the radiator heating? |
-| Imposed mode | pass-through (default), imposed setpoint, Boost, off |
-| Imposed setpoint | setpoint sent to the power board in imposed mode |
+| Keys mode, Keys setpoint | what is set on the keys |
+| Power board, Heating | what the power board does: idle, heating, Boost, off |
+| Control | `relay` (the keys, default), `setpoint`, `boost`, `off` (imposed) |
+| Setpoint | the setpoint in force; setting it from Home Assistant imposes it |
+
+The last order wins: an order from Home Assistant replaces the keys' one, and the next change made on the keys takes over again.
 
 The control box only sends its effective setpoint: in Eco, Home Assistant sees the Eco setpoint, without knowing it is Eco.
 

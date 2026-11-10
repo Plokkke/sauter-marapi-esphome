@@ -1,0 +1,10 @@
+[package]
+name         = "linap"
+version      = "0.0.0"
+edition      = "2024"
+rust-version = "1.95"
+description  = "Linap bus of the Sauter Marapi towel radiator: frames, states and the man-in-the-middle logic"
+license      = "MIT"
+publish      = false
+
+[dependencies]

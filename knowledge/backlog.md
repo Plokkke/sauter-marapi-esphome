@@ -6,6 +6,8 @@
 - [x] La carte de puissance obéit à un ESP qui joue la carte de commande (consigne, Boost, arrêt).
 - [x] La carte de commande répond à un ESP qui joue la carte de puissance : tout ce qui est fait aux touches est lisible.
 - [x] La carte de commande ne se laisse pas piloter par le bus (adresses et écritures essayées) : l'écran ne suivra pas HA.
+- [x] Crate `linap` en Rust pur, testée sur le Mac : trames, parité, octet d'appel, mode transparent, état imposé, retour au transparent sur changement aux touches ou sans HA pendant 30 min (`firmware/linap/`).
+- [x] Firmware du C3 écrit, compile : deux UART sur interruption, Wi-Fi, MQTT et découverte HA (`firmware/mitm/`).
 - [x] Capacité du 5 V de la nappe : ≈ 160 mA en tout, lâche vers 180 mA. Un D1 mini y tient avec le boîtier de commande (démarrages et Boost validés) : plus de 230 V à raccorder.
 
 ## Carte MITM
@@ -21,15 +23,15 @@
 
 ## Firmware Rust (`firmware/`)
 
-- [ ] Crate de la logique pure, testée sur le Mac : trames, parité, octet d'appel, mode transparent, état imposé, retour au transparent sur appui d'une touche ou sans HA pendant 30 min.
-- [ ] Sur le C3 (`esp-hal`, `embassy`) : deux UART, réponse à l'appel sur interruption dans le bit qui suit.
-- [ ] Au banc, en remplacement des firmwares ESPHome : rejouer l'étape 3 (fausse carte de commande), puis l'étape 2, puis le MITM complet, cartes branchées.
-- [ ] Liaison avec Home Assistant (MQTT et découverte automatique, à confirmer), mises à jour OTA, Wi-Fi.
+- [ ] Compte MQTT pour la carte sur le Mosquitto de HA, dans `firmware/secrets.env`.
+- [ ] Premier essai du C3 sur le radiateur, carte de commande débranchée (comme l'étape 3) : `Control` sur `setpoint` et `boost` depuis HA, « Polls answered » à 100 %, mesure de la marge « Reply gap » et de la consommation sur la nappe.
+- [ ] Puis le MITM complet, carte de commande sur la seconde voie : relais des touches, reprise de la main, écran.
+- [ ] Mises à jour OTA (`esp-bootloader-esp-idf`, deux partitions), indispensables une fois la carte enfermée.
 - [ ] Boîtier (`enclosure/`), séparation secteur / basse tension.
 
 ## À comprendre
 
-- [ ] Capture longue avec une consigne proche de la température de la pièce : trouver la mesure de température dans `75`, `61` ou `73`, pour l'exposer à HA.
+- [ ] Capture longue avec une consigne proche de la température de la pièce : trouver la mesure de température dans `75`, `61` ou `73`, pour l'exposer à HA. Avec le journal des trames du MITM (« Frame log », `firmware/README.md`), plus besoin du sniffer.
 - [ ] Ce que fait la carte de puissance après un long silence de la carte de commande (au-delà de 30 s).
 - [ ] Sens de la réponse `70` (`83 80 89`, constante) et de `76`.
 
