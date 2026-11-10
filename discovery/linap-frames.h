@@ -35,13 +35,39 @@ inline bool checksum_ok(const Frame &frame) {
          std::all_of(frame.begin(), frame.end(), [](uint8_t byte) { return __builtin_parity(byte) == 1; });
 }
 
+// After 75, C7 and 76, the power board polls the command board with a lone header byte (46, or 70 about every
+// 30 s); the command board answers with the 3 data bytes and the checksum only, 1 bit after it (10/11/2026)
+inline bool is_poll(const Frame &frame) { return frame.size() == 1 && (frame[0] == 0x46 || frame[0] == 0x70); }
+inline bool polls_after(const Frame &frame) {
+  return frame.size() == FRAME_SIZE && (frame[0] == 0x75 || frame[0] == 0xC7 || frame[0] == 0x76);
+}
+
+// Busy-waits up to timeout_us for one byte on DATA (high = idle), sampled in the middle of each bit, and returns
+// at the middle of its stop bit; -1 on timeout or framing error. Fast enough to answer within one bit.
+template<typename ReadHigh, typename Micros> int read_byte(ReadHigh read_high, Micros now_us, uint32_t timeout_us) {
+  const uint32_t begin = now_us();
+  while (read_high())
+    if (now_us() - begin > timeout_us)
+      return -1;
+  const uint32_t start = now_us();
+  int value = 0;
+  for (int bit = 0; bit <= 8; bit++) {
+    while (now_us() - start < lroundf(BIT_US * (1.5f + bit))) {
+    }
+    if (bit < 8)
+      value |= read_high() << bit;
+    else if (!read_high())
+      return -1;
+  }
+  return value;
+}
+
 // Idle time inside a frame, in bit times, as measured on the radiator (capture of 07/11/2026)
 struct Pacing {
   int after_header;
   int between_bytes;
 };
 static const Pacing POWER_BOARD_PACING{7, 2};
-static const Pacing COMMAND_BOARD_PACING{1, 0};
 
 // One byte at a time, each written once the previous one is out: the UART FIFO would send them back to back
 template<typename Uart, typename DelayUs> void write_paced(Uart *uart, const Frame &frame, Pacing pacing, DelayUs delay_us) {
@@ -99,6 +125,8 @@ inline Frame known(uint8_t header, const std::string &name) {
 // Hex dump plus what we know of it
 inline std::string describe(const Frame &frame) {
   const std::string text = hex(frame);
+  if (is_poll(frame))
+    return text + " (poll)";
   if (!checksum_ok(frame))
     return text + " (bad checksum or parity)";
   for (const KnownFrame &entry : KNOWN_FRAMES)

@@ -24,8 +24,8 @@ remote_receiver:
   pin:
     number: GPIO4 # D2, through the 10 k / 15 k divider (5.2 V bus -> 3.1 V)
     inverted: true
-  # The longest high level inside a frame is 1 ms: 3 ms of idle splits our frame from the reply
-  idle: 3ms
+  # The longest high level inside a frame is 1 ms: 2 ms of idle splits a poll byte from the reply, soon enough
+  idle: 2ms
   filter: 4us
   buffer_size: 2kb
 

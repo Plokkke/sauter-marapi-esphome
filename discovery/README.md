@@ -5,8 +5,8 @@ Comment le protocole du bus Linap a été trouvé, et les outils pour refaire ch
 | Étape | Dossier | Rôle de l'ESP | Où | État |
 |---|---|---|---|---|
 | 1 | [`1-sniffer/`](1-sniffer/) | écoute la nappe entre les deux cartes | radiateur | fait, protocole de base décodé |
-| 2 | [`2-power-emulator/`](2-power-emulator/) | joue la carte de puissance face à la carte de commande seule | bureau, sans secteur | fait : la carte de commande ne répond pas |
-| 3 | [`3-controller-emulator/`](3-controller-emulator/) | joue la carte de commande face à la carte de puissance seule | radiateur | à faire |
+| 2 | [`2-power-emulator/`](2-power-emulator/) | joue la carte de puissance face à la carte de commande seule | bureau, sans secteur | à refaire avec l'octet d'appel (la carte de commande n'a jamais répondu) |
+| 3 | [`3-controller-emulator/`](3-controller-emulator/) | joue la carte de commande face à la carte de puissance seule | radiateur | fait : la carte de puissance obéit (consigne, Boost, arrêt) |
 
 Les résultats (format des trames, consigne, Boost…) sont dans `knowledge/linap.md` ; ce fichier décrit la méthode.
 
@@ -44,7 +44,7 @@ Monté ici avec les résistances du tiroir : R1 = 2 × 10 kΩ en série et R2 = 
 |---|---|---|---|---|---|
 | 1. écoute | J1 | ouvert | bloqué (firmware sans émission) | non montée | oui |
 | 2. fausse carte de puissance | USB, J1 débranchée | **fermé** | émet | non montée | **non** |
-| 3. fausse carte de commande | J1 | ouvert | émet | si DATA reste bas au repos | oui |
+| 3. fausse carte de commande | J1 | ouvert | émet | montée | oui |
 
 **Pourquoi un NPN et pas une diode** pour émettre : une diode vers une broche à 3,3 V écrêterait DATA vers 3,6 V au repos, soit 2,2 V sur D2, sous le seuil haut de l'ESP8266. Q1 bloqué laisse DATA à 5 V. D8 est tiré à la masse sur le D1 mini au démarrage : Q1 reste bloqué pendant le boot et avec le firmware d'écoute.
 
@@ -75,7 +75,7 @@ Question : la carte de commande accepte-t-elle un maître qui n'est pas la vraie
 
 - **Sans secteur** : la carte de commande seule, débranchée du radiateur, prend son 5 V sur le D1 mini alimenté en USB (JP1 fermé, J1 débranchée).
 - Firmware : `linap-power-emulator.yaml`. L'ESP reproduit le cycle de la vraie carte (5 créneaux de 61 ms : `75`, réponse, `C7`, réponse, `61`, octets espacés comme les siens) et décode les réponses.
-- Résultat (10/11/2026) : nos trames sont relues identiques aux vraies, mais la carte de commande ne répond jamais (détail dans `knowledge/linap.md`). Étape laissée de côté au profit de l'étape 3.
+- Résultat (10/11/2026) : nos trames sont relues identiques aux vraies, mais la carte de commande ne répond jamais (détail dans `knowledge/linap.md`). L'étape 3 a montré pourquoi : la carte de commande ne parle qu'après l'octet d'appel `46` (ou `70`) de la carte de puissance, que ce firmware n'envoie pas encore. À refaire : c'est la condition du MITM, qui garde l'écran et les touches d'origine.
 - Page `http://linap-power-emulator.local` : marche/arrêt de l'interrogation ; état `C7` envoyé à chaque cycle (normal, Boost, chauffe, arrêt) ; ack Boost envoyé une seule fois ; envoi d'une trame quelconque (4 octets, somme de contrôle ajoutée) ; dernière trame `46` décodée.
 - Contrôle du câblage : toutes les 10 s, le log `bus` compte nos trames entendues en retour sur DATA (0 = Q1 ne tire pas DATA) et les trames de la carte de commande.
 
@@ -85,11 +85,13 @@ Déroulé : `esphome run discovery/2-power-emulator/linap-power-emulator.yaml` e
 
 Question : la carte de puissance obéit-elle à une carte de commande qui n'est pas la vraie (consigne, Boost, arrêt), et que fait-elle si personne ne répond ?
 
-- Sur le radiateur, **carte de commande débranchée** : l'ESP flotte au potentiel du secteur, alimentation de labo, JP1 ouvert, **jamais d'USB** (mêmes règles qu'à l'étape 1). R7 n'est montée que si le heartbeat lit DATA à l'état bas au repos.
-- Firmware : `linap-controller-emulator.yaml`. L'ESP répond comme la vraie carte (capture guidée) : `46` après `75`, `C7` et `76`, `70` à la place de `46` après un `75` toutes les 30 s environ, rien après `61`, `73`, `67`.
-- Page `http://linap-controller-emulator.local` : réponse marche/arrêt ; mode (normal, Boost, arrêt) ; consigne (bit 7 de parité recalculé) ; envoi d'une trame quelconque à la place de la prochaine réponse ; dernières trames `C7` et `73` décodées.
+- Sur le radiateur, **carte de commande débranchée** : l'ESP flotte au potentiel du secteur, alimentation de labo, JP1 ouvert, **jamais d'USB** (mêmes règles qu'à l'étape 1). R7 montée : sans la carte de commande, rien ne garantit le rappel de DATA à l'état haut (essai sans R7 pas fait).
+- Firmware : `linap-controller-emulator.yaml`. Après `75`, `C7` et `76`, l'ESP scrute D2 jusqu'à l'octet d'appel de la carte de puissance, le lit bit à bit, puis répond 1 bit après par les 4 octets qui manquent : la suite de son état `46`, ou de `70 83 80 89` après un appel `70`. Le `remote_receiver` relit l'appel et la réponse comme une seule trame (écho).
+- Page `http://linap-controller-emulator.local` : réponse marche/arrêt ; mode (normal, Boost, arrêt) ; consigne (bit 7 de parité recalculé) ; écart entre l'appel et la réponse (1 bit par défaut) ; envoi d'une trame quelconque à la place de la prochaine réponse ; dernières trames `C7` et `73` décodées.
+- Résultat (10/11/2026) : R7 montée, DATA au repos à l'état haut. Les trames `46` complètes envoyées 5 à 25 ms après `75` ou `C7` étaient ignorées ; un journal de la durée de chaque rafale a montré l'octet d'appel, et dès que l'ESP y a répondu, la carte de puissance a suivi le Boost, l'arrêt et la consigne (détail dans `knowledge/linap.md`).
+- Reste à fiabiliser : l'ESP ne sert qu'un appel sur deux, parfois trop tard sur la broche, et une réponse a été coupée en deux. Piste : lire l'appel avec l'UART matérielle (D7, à relier à D2) plutôt que par scrutation.
 
-Essais prévus : la carte de puissance seule interroge-t-elle le bus (DATA au repos à l'état haut, sinon R7) ; consigne haute puis basse (qui décide de chauffer ?) ; Boost et arrêt ; réponse coupée (quelle erreur, et reprise ?) ; suivre `73` pendant une chauffe.
+Essais restants : réponse coupée longtemps (quelle erreur, et reprise ?) ; suivre `61`, `73` et `75` en faisant varier la consigne autour de la température de la pièce, pour trouver la mesure de la carte de puissance.
 
 ## Évolution du montage
 
