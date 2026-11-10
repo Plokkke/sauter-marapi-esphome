@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generates the KiCad schematic of the discovery bench: one Wemos D1 mini on the Linap bus, used by every stage.
 
-Usage: discovery/generate-schematic.py   (then check with kicad-cli sch erc, export with kicad-cli sch export svg)
+Usage: discovery/bench/generate-schematic.py   (then check with kicad-cli sch erc, export with kicad-cli sch export svg)
 """
 import uuid
 from pathlib import Path

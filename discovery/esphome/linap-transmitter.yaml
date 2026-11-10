@@ -2,7 +2,7 @@
 # The including firmware adds remote_receiver.on_raw, which feeds linap_bus (linap-frames.h).
 esphome:
   includes:
-    - ../linap-frames.h
+    - ../esphome/linap-frames.h
 
 # The logs leave UART0 (USB) for UART1 (GPIO2), so that UART0, swapped to GPIO15/GPIO13, sends the frames in
 # hardware: exact timing, no bit-banging with interrupts off. Logs then reach the Mac over Wi-Fi only.

@@ -1,10 +1,10 @@
 # Stage 1, listen: a Wemos D1 mini floating at the bus potential, powered by a floating lab supply,
-# reachable only over Wi-Fi. Wiring and safety: ../linap-bench.kicad_sch. Procedure: discovery/README.md.
+# reachable only over Wi-Fi. Wiring and safety: ../bench/linap-bench.kicad_sch. Procedure: discovery/README.md.
 # Flash over USB BEFORE wiring it to the bus; never plug USB while it is wired to the bus (mains potential).
 packages:
-  network: !include {file: ../../firmware/network.yaml, vars: {fallback_ap_ssid: "Linap-Sniffer"}}
-  hotspot: !include ../../firmware/hotspot-wifi.yaml
-  bench: !include ../linap-bench.yaml
+  network: !include {file: ../esphome/network.yaml, vars: {fallback_ap_ssid: "Linap-Sniffer"}}
+  hotspot: !include ../esphome/hotspot-wifi.yaml
+  bench: !include ../esphome/linap-bench.yaml
 
 esphome:
   name: linap-sniffer
@@ -17,7 +17,7 @@ esphome:
       - script.execute: show_next_step
 
 # Logs the duration of every level of DATA, frame by frame: positive = low (mark), negative = high (space), in µs.
-# The bus idles high, so the pin is inverted to make the start bit a mark. Decoded by discovery/decode.py.
+# The bus idles high, so the pin is inverted to make the start bit a mark. Decoded by discovery/tools/decode.py.
 remote_receiver:
   pin:
     number: GPIO4 # D2, through the 10 k / 15 k divider (5.2 V bus -> 3.1 V)

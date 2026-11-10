@@ -84,7 +84,7 @@ Essais d'écriture vers la carte de commande (au banc, sans secteur) : chacun de
 - **DATA coupé en deux**, GND et VCC traversent. L'ESP joue la carte de puissance côté commande (il appelle, elle répond) et la carte de commande côté puissance (il répond aux appels).
 - **Lecture** : chaque réponse de la carte de commande donne la consigne, le Boost ou l'arrêt choisis aux touches. `C7` dit si le radiateur chauffe.
 - **Écriture** : l'ESP répond ce qu'il veut à la carte de puissance. Par défaut il relaie la carte de commande ; quand Home Assistant impose un état, il l'envoie à la place, jusqu'au prochain changement fait aux touches. L'écran, lui, garde l'état choisi aux touches.
-- **Temps réel** : la réponse doit partir dans le bit qui suit l'appel (≈ 100 µs). Il faut une réception sur interruption ou par UART matérielle, pas une lecture dans la boucle ESPHome.
+- **Temps réel** : la réponse doit partir dans le bit qui suit l'appel (≈ 100 µs). Il faut une réception sur interruption ou par UART matérielle, pas une lecture dans une boucle principale.
 - **Panne** : si l'ESP tombe, les deux moitiés de DATA ne se parlent plus et le radiateur s'arrête en « Err 10 », sans chauffer. Un redémarrage de l'ESP (une dizaine de secondes) passe sans effet.
 
 ## Pas encore connu

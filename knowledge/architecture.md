@@ -5,7 +5,7 @@
 | Niveau | Projet | Rôle |
 |---|---|---|
 | Sèche-serviettes | Sauter Marapi tactile 1750 W (750 W de fluide + 1000 W de soufflerie) | sa carte de commande (écran, touches) choisit consigne, mode et Boost ; sa carte de puissance chauffe d'après sa propre sonde |
-| Pont | **ce projet** | un ESP (format D1 mini) sur le bus Linap interne : lit ce que fait l'utilisateur, impose ce que décide Home Assistant |
+| Pont | **ce projet** | un ESP32-C3, firmware en Rust, sur le bus Linap interne : lit ce que fait l'utilisateur, impose ce que décide Home Assistant |
 | Maison | automatisation HA (autre projet) | plannings, présence, délestage |
 
 Ce projet ne contient aucune automatisation HA.
@@ -43,12 +43,22 @@ La carte de commande n'envoie que sa consigne effective : HA voit la consigne É
 - **Démarrage et mise à jour OTA** : une dizaine de secondes sans dialogue, tolérées (30 s mesurées sans effet côté carte de puissance, plusieurs minutes avant « Err » côté carte de commande).
 - **Potentiel du secteur** : alimentée par la nappe, toute la carte est au potentiel du bus, donc du secteur, comme le boîtier de commande. Elle est entièrement enfermée, sans partie touchable ni USB accessible, et se met à jour en OTA uniquement.
 
+## Firmware
+
+**Décidé** (10/11/2026) : **Rust sur ESP32-C3**, plutôt qu'ESPHome.
+
+- Le C3 a deux UART complètes, une par voie, et Rust (`esp-hal`, `embassy`) permet de répondre à l'appel sur interruption, dans le bit qui suit, sans dépendre d'une boucle principale.
+- La logique (trames, parité, relais, état imposé) est du code pur, testable sur le Mac ; le temps vient de l'appelant.
+- ESPHome ne sert plus qu'au banc (`discovery/`). Ce qu'il donnait sans rien écrire est à faire : liaison avec Home Assistant (probablement MQTT avec la découverte automatique, à confirmer), mises à jour OTA, gestion du Wi-Fi.
+- L'ESP8266 du D1 mini est écarté : Rust ne le prend plus en charge (ni HAL maintenue, ni pile Wi-Fi).
+- Antenne : un C3 vendu avec une antenne externe (Seeed XIAO ESP32-C3 par exemple, à vérifier), le radiateur étant loin de la box.
+
 ## Alimentation
 
-**Décidé** (10/11/2026) : la carte s'alimente sur le **5 V de la nappe**, comme le boîtier de commande. Plus de raccordement au 230 V, ni HLK-PM01, ni fusible, ni varistance.
+**Décidé** (10/11/2026) : la carte s'alimente sur le **5 V de la nappe**, comme le boîtier de commande. Plus de raccordement au 230 V, ni HLK-PM01, ni fusible, ni varistance. **À confirmer avec le C3** : la mesure a été faite avec un D1 mini.
 
-- Le 5 V de la carte de puissance tient ≈ 160 mA en tout et lâche vers 180 mA (`linap.md`). Le boîtier de commande en prend 40, un D1 mini en Wi-Fi 80 en moyenne : ≈ 120 mA, ≈ 40 mA de marge.
+- Le 5 V de la carte de puissance tient ≈ 160 mA en tout et lâche vers 180 mA (`linap.md`). Le boîtier de commande en prend 40, un D1 mini en Wi-Fi 80 en moyenne : ≈ 120 mA, ≈ 40 mA de marge. Un C3 en Wi-Fi est du même ordre, avec des pointes d'émission plus fortes : à mesurer sur la nappe comme le D1.
 - Validé avec un D1 mini sur la nappe et le boîtier de commande branché : VCC à 5,11 V, plusieurs démarrages du radiateur, navigation et Boost.
 - Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes d'émission Wi-Fi.
-- Pas de marge pour un ESP32, qui consomme davantage, ni pour une bobine de relais : la carte reste sobre.
+- Pas de marge pour une bobine de relais : la carte reste sobre.
 - Sur chaque voie, pas besoin d'optocoupleur : l'ESP est au potentiel du bus, et le montage du banc suffit (pont diviseur en lecture, NPN en émission).

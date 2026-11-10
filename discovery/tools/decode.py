@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Decodes the Linap frames logged by discovery/1-sniffer/linap-sniffer.yaml (ESPHome remote_receiver, dump: raw).
 
-Live:  esphome logs discovery/1-sniffer/linap-sniffer.yaml | tee capture.log | discovery/decode.py
-Later: discovery/decode.py capture.log --changes --ignore 75
+Live:  esphome logs discovery/1-sniffer/linap-sniffer.yaml | tee capture.log | discovery/tools/decode.py
+Later: discovery/tools/decode.py capture.log --changes --ignore 75
 
 A frame is the list of DATA levels in µs: positive = low, negative = high (the receiver pin is inverted).
 Bytes are read as a UART (Linap: 9600 baud, 7 data bits + odd parity, read here as 8N1): idle high, start bit low,

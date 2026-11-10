@@ -1,12 +1,12 @@
 # Stage 3, fake command board, on the radiator: the real command board is unplugged and this Wemos D1 mini,
 # floating at mains potential on a floating lab supply, answers the power board: http://linap-controller-emulator.local.
-# Wiring and safety: ../linap-bench.kicad_sch (JP1 open). Procedure: discovery/README.md.
+# Wiring and safety: ../bench/linap-bench.kicad_sch (JP1 open). Procedure: discovery/README.md.
 # Flash over USB BEFORE wiring it to the bus; never plug USB while it is wired to the bus (mains potential).
 packages:
-  network: !include {file: ../../firmware/network.yaml, vars: {fallback_ap_ssid: "Linap-Controller-Emulator"}}
-  hotspot: !include ../../firmware/hotspot-wifi.yaml
-  bench: !include ../linap-bench.yaml
-  transmitter: !include ../linap-transmitter.yaml
+  network: !include {file: ../esphome/network.yaml, vars: {fallback_ap_ssid: "Linap-Controller-Emulator"}}
+  hotspot: !include ../esphome/hotspot-wifi.yaml
+  bench: !include ../esphome/linap-bench.yaml
+  transmitter: !include ../esphome/linap-transmitter.yaml
 
 esphome:
   name: linap-controller-emulator

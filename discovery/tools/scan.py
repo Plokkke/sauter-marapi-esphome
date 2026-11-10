@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Probes the command board through the web page of linap-power-emulator.yaml: one request per second.
 
-  scan.py addresses   poll bytes 00-7F (parity added) after C7: which addresses does the command board answer?
-  scan.py known       the power board's own headers, each data byte set to 00, to each single bit, then to 7F
-  scan.py unknown     every other header, with data 80 80 80
+  discovery/tools/scan.py addresses   poll bytes 00-7F (parity added) after C7: which addresses does the command board answer?
+  discovery/tools/scan.py known       the power board's own headers, each data byte set to 00, to each single bit, then to 7F
+  discovery/tools/scan.py unknown     every other header, with data 80 80 80
 
 The answers are read in the logs (esphome logs ... | tee scan.log): each test is marked by a "note: test ..." line.
 Use the IP address (--host): resolving the .local name takes seconds on macOS.

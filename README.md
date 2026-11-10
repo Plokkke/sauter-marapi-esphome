@@ -32,7 +32,7 @@ La carte coupe le fil de données et se place entre les deux, comme un interméd
 
 ```mermaid
 flowchart LR
-  HA[Home Assistant] <-- Wi-Fi --> C3[ESP<br>ESPHome]
+  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>Rust]
   CMD[Boîtier de commande<br>écran, touches] <-- données --> C3
   C3 <-- données --> PWR[Carte de puissance<br>fluide, soufflerie]
   PWR -. 5 V et masse, en direct .- CMD
@@ -77,20 +77,22 @@ Aucune documentation n'existe sur ce bus. Il a été décodé avec un **Wemos D1
 
 Ce qui ne changera pas :
 
-- **Un Wemos D1 mini** (ESP8266) sous ESPHome : la place ne manque pas dans le radiateur, et son antenne est meilleure que celle d'un C3 super mini, loin de la box. Un ESP32 consommerait trop pour la nappe. Reste à mesurer la marge que laisse la carte de puissance pour répondre à ses appels.
-- **Alimentée par la nappe** : le 5 V de la carte de puissance tient ≈ 160 mA en tout, et un D1 mini avec le boîtier de commande en prend ≈ 120 (VCC à 5,11 V, démarrages du radiateur et Boost validés). Plus de 230 V à raccorder. Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes du Wi-Fi.
+- **Un ESP32-C3 à antenne externe**, firmware en Rust : deux UART complètes, une par voie, et une réponse aux appels sur interruption. La place ne manque pas dans le radiateur, et une bonne antenne compte, loin de la box.
+- **Alimentée par la nappe** : le 5 V de la carte de puissance tient ≈ 160 mA en tout, et un D1 mini avec le boîtier de commande en prend ≈ 120 (VCC à 5,11 V, démarrages du radiateur et Boost validés) ; le C3 reste à mesurer. Plus de 230 V à raccorder. Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes du Wi-Fi.
 - **Sur chaque voie**, le montage du banc : un pont diviseur pour lire DATA, un transistor NPN pour la tirer à la masse.
 - **Toute la carte est au potentiel du secteur**, comme le boîtier de commande : elle doit être entièrement enfermée, sans rien de touchable, et se mettre à jour par Wi-Fi seulement.
 
 ## Firmware
 
-La configuration ESPHome commune (Wi-Fi, API, OTA) est dans `firmware/`. Le firmware de la carte définitive reste à écrire ; en attendant, ceux du banc tournent sur un D1 mini :
+Le firmware de la carte sera écrit en **Rust** pour l'ESP32-C3, dans `firmware/` (à venir) : logique des trames testée sur ordinateur, réponse aux appels sur interruption, liaison avec Home Assistant.
+
+Les firmwares du banc, eux, sont des configurations ESPHome pour D1 mini, dans `discovery/` :
 
 ```sh
 uv tool install esphome
-cp firmware/secrets.example.yaml firmware/secrets.yaml   # Wi-Fi, clé API, mot de passe OTA
+cp discovery/esphome/secrets.example.yaml discovery/esphome/secrets.yaml   # Wi-Fi, clé API, mot de passe OTA
 esphome run discovery/1-sniffer/linap-sniffer.yaml       # premier flash en USB, avant tout câblage
-esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/decode.py
+esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/tools/decode.py
 ```
 
 ## Dans Home Assistant
@@ -121,4 +123,4 @@ Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assis
 
 ---
 
-**Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur électrique, Groupe Atlantic, Thermor, Atlantic, bus interne, liaison Linap, Err 10, man in the middle, rétro-ingénierie, ESPHome, Home Assistant, domotique, ESP8266, Wemos D1 mini, boîtier de commande `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, circuit imprimé KiCad.
+**Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur électrique, Groupe Atlantic, Thermor, Atlantic, bus interne, liaison Linap, Err 10, man in the middle, rétro-ingénierie, Rust, esp-hal, embassy, ESP32-C3, ESPHome, Home Assistant, domotique, ESP8266, Wemos D1 mini, boîtier de commande `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, circuit imprimé KiCad.

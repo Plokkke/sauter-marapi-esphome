@@ -21,9 +21,9 @@ Les étapes 2 et 3 sont les deux moitiés du futur MITM.
 
 ## Le banc
 
-Un seul montage pour les trois étapes. Schéma : [`linap-bench.kicad_sch`](linap-bench.kicad_sch), produit par [`generate-schematic.py`](generate-schematic.py).
+Un seul montage pour les trois étapes. Schéma : [`bench/linap-bench.kicad_sch`](bench/linap-bench.kicad_sch), produit par [`bench/generate-schematic.py`](bench/generate-schematic.py).
 
-![Banc Linap](linap-bench.svg)
+![Banc Linap](bench/linap-bench.svg)
 
 | Repère | Composant | Rôle |
 |---|---|---|
@@ -52,12 +52,12 @@ Pourquoi un NPN pour émettre : une diode vers une broche à 3,3 V écrêterait 
 
 ## Étape 1 : écoute (`1-sniffer/`)
 
-- Branché en dérivation sur la nappe, cartes en place. Le firmware `linap-sniffer.yaml` journalise chaque trame comme une suite de durées (µs) ; [`decode.py`](decode.py) les lit sur le Mac comme une UART et vérifie la somme de contrôle.
+- Branché en dérivation sur la nappe, cartes en place. Le firmware `linap-sniffer.yaml` journalise chaque trame comme une suite de durées (µs) ; [`tools/decode.py`](tools/decode.py) les lit sur le Mac comme une UART et vérifie la somme de contrôle.
 - **Capture guidée** : la page affiche l'action à faire (liste dans `linap-sniffer-steps.h`), « Go » écrit un repère dans les logs, un compte à rebours dit quand passer à la suite.
 
 ```sh
-esphome logs discovery/1-sniffer/linap-sniffer.yaml | tee capture.log | discovery/decode.py
-discovery/decode.py capture.log --changes --ignore 75   # après coup : seules les trames qui changent, entre les repères
+esphome logs discovery/1-sniffer/linap-sniffer.yaml | tee capture.log | discovery/tools/decode.py
+discovery/tools/decode.py capture.log --changes --ignore 75   # après coup : seules les trames qui changent, entre les repères
 ```
 
 Le sniffer coupe les trames après 10 ms de repos : il voit l'appel de la carte de puissance et la réponse de la carte de commande comme une seule trame `46`.
@@ -67,11 +67,11 @@ Le sniffer coupe les trames après 10 ms de repos : il voit l'appel de la carte 
 - Au bureau, **sans secteur** : la carte de commande seule prend son 5 V sur le D1 mini (USB, JP1 fermé).
 - `linap-power-emulator.yaml` reproduit le cycle de la vraie carte (`75`, `C7`, `61`, octets espacés comme les siens) et ses octets d'appel `46` / `70`, puis décode les réponses.
 - Page `http://linap-power-emulator.local` : état `C7` annoncé, octet d'appel marche/arrêt et délai, adresse d'appel après `C7` (« Probe address »), envoi d'une trame quelconque, dernière réponse `46` décodée.
-- [`scan.py`](2-power-emulator/scan.py) automatise les essais par la page : adresses d'appel, trames de la carte de puissance modifiées octet par octet, en-têtes inconnus. Chaque essai est marqué dans les logs.
+- [`tools/scan.py`](tools/scan.py) automatise les essais par la page : adresses d'appel, trames de la carte de puissance modifiées octet par octet, en-têtes inconnus. Chaque essai est marqué dans les logs.
 
 ```sh
 esphome logs discovery/2-power-emulator/linap-power-emulator.yaml | tee scan.log
-discovery/2-power-emulator/scan.py addresses --host <ip>   # puis known, puis unknown
+discovery/tools/scan.py addresses --host <ip>   # puis known, puis unknown
 ```
 
 **Résultat** : avec l'octet d'appel, la carte de commande répond à chaque appel et donne sa consigne, son Boost, son arrêt, tels que réglés aux touches ; sans appel, elle se tait. Elle ne répond qu'aux adresses `46` et `70`, et rien de ce qu'on lui envoie ne change son état ni son écran.
@@ -84,15 +84,13 @@ discovery/2-power-emulator/scan.py addresses --host <ip>   # puis known, puis un
 
 **Résultat** : la carte de puissance suit le Boost (soufflerie en marche en 0,3 s), l'arrêt et la consigne, et chauffe d'elle-même quand la consigne dépasse la température de la pièce. Limite du banc : l'ESP8266, occupé par le Wi-Fi, ne sert qu'un appel sur deux. Elle le tolère, mais la carte finale devra répondre à chaque appel.
 
-## Fichiers communs
+## Organisation du dossier
 
-| Fichier | Rôle |
+| Dossier | Contenu |
 |---|---|
-| `linap-bench.yaml` | paquet ESPHome de toutes les étapes : D1 mini, page web, note, heartbeat (niveau de DATA) |
-| `linap-transmitter.yaml` | paquet des émulateurs : émission sur D8 (UART0 matérielle, inversée), écoute sur D2, compteur d'échos, envoi d'une trame |
-| `linap-frames.h` | codage et décodage des trames, trames connues, lecture d'un octet d'appel, comptage des échos |
-| `decode.py` | décodage sur le Mac des captures de l'étape 1 |
-| `generate-schematic.py`, `linap-bench.kicad_sym` | schéma du banc et symbole du D1 mini, dessiné comme la carte (broches à leur place, vue de dessus) |
-| `../firmware/network.yaml`, `../firmware/hotspot-wifi.yaml` | Wi-Fi (partage de connexion d'abord), API, OTA ; secrets dans `../firmware/secrets.yaml` |
+| `1-sniffer/`, `2-power-emulator/`, `3-controller-emulator/` | le firmware ESPHome de chaque étape, avec le code C++ qui lui est propre |
+| `esphome/` | ce que partagent les firmwares : `linap-bench.yaml` (D1 mini, page web, note, heartbeat), `linap-transmitter.yaml` (émission sur D8 par l'UART0 matérielle inversée, écoute sur D2, échos, envoi d'une trame), `linap-frames.h` (codage et décodage des trames, lecture d'un octet d'appel), `network.yaml` et `hotspot-wifi.yaml` (Wi-Fi, API, OTA), `secrets.example.yaml` (modèle de `secrets.yaml`) |
+| `bench/` | le schéma KiCad du banc, son rendu `.svg`, le symbole du D1 mini dessiné comme la carte, et `generate-schematic.py` qui les produit |
+| `tools/` | scripts du Mac : `decode.py` (captures de l'étape 1), `scan.py` (essais de l'étape 2 par la page web) |
 
-Pour modifier le banc : changer `generate-schematic.py` (révision, date, note), le relancer, puis `kicad-cli sch erc` et `kicad-cli sch export svg` sur `linap-bench.kicad_sch`. Révisions : 1 (07/11/2026, écoute), 2 (08/11/2026, émission par Q1 et rappel R7) ; les anciennes sont dans `git log -- discovery/linap-bench.kicad_sch`.
+Pour modifier le banc : changer `bench/generate-schematic.py` (révision, date, note), le relancer, puis `kicad-cli sch erc` et `kicad-cli sch export svg` sur `bench/linap-bench.kicad_sch`. Révisions : 1 (07/11/2026, écoute), 2 (08/11/2026, émission par Q1 et rappel R7) ; les anciennes sont dans `git log --follow -- discovery/bench/linap-bench.kicad_sch`.

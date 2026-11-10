@@ -11,14 +11,20 @@
 ## Carte MITM
 
 - [ ] Dessiner la carte MITM (`hardware/`, règles de dessin dans `CLAUDE.md`) :
-  - sur un D1 mini alimenté par la nappe, avec un condensateur de 470 à 1000 µF ;
+  - sur un ESP32-C3 à antenne externe, alimenté par la nappe, avec un condensateur de 470 à 1000 µF ;
   - deux voies, côté commande et côté puissance, chacune avec le montage du banc (pont diviseur en lecture, NPN en émission) ;
   - le rappel de DATA à l'état haut côté carte de puissance (≈ 5 kΩ vers VCC), que la carte de commande ne fait plus ;
   - deux connecteurs pour la nappe coupée (GND, VCC, DATA de chaque côté).
 - [ ] Mesurer la place libre dans le boîtier de commande et choisir où loger la carte et comment couper la nappe (rallonge à connecteurs d'origine si possible).
-- [ ] Mesurer la marge de réponse de la carte de puissance (étape 3, réglage « Reply gap » à 2, 5, 10, 20 bits, Boost à chaque palier), pour savoir si l'ESP8266 du D1 mini répond assez vite (une seule UART complète : UART0 côté puissance, UART1 et réception logicielle côté commande). Un ESP32 consommerait trop pour la nappe.
-- [ ] Firmware : réponse dans le bit qui suit l'appel (réception sur interruption ou UART matérielle), mode transparent par défaut, état imposé par HA, retour au mode transparent sur appui d'une touche ou sans HA pendant 30 min.
-- [ ] Prototype au banc avec deux D1 mini ou un ESP32 à deux UART avant la carte : vérifier le mode transparent et l'état imposé, cartes branchées.
+- [ ] Choisir la carte C3 (antenne externe) et mesurer sa consommation sur la nappe, Wi-Fi actif, démarrages du radiateur et Boost compris.
+- [ ] Mesurer la marge de réponse de la carte de puissance (étape 3, réglage « Reply gap » à 2, 5, 10, 20 bits, Boost à chaque palier) : elle fixe la contrainte de temps du firmware.
+
+## Firmware Rust (`firmware/`)
+
+- [ ] Crate de la logique pure, testée sur le Mac : trames, parité, octet d'appel, mode transparent, état imposé, retour au transparent sur appui d'une touche ou sans HA pendant 30 min.
+- [ ] Sur le C3 (`esp-hal`, `embassy`) : deux UART, réponse à l'appel sur interruption dans le bit qui suit.
+- [ ] Au banc, en remplacement des firmwares ESPHome : rejouer l'étape 3 (fausse carte de commande), puis l'étape 2, puis le MITM complet, cartes branchées.
+- [ ] Liaison avec Home Assistant (MQTT et découverte automatique, à confirmer), mises à jour OTA, Wi-Fi.
 - [ ] Boîtier (`enclosure/`), séparation secteur / basse tension.
 
 ## À comprendre

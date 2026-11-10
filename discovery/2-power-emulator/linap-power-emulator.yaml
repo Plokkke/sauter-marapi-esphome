@@ -1,11 +1,11 @@
 # Stage 2, fake power board, on the bench only: NO MAINS. The command board, alone, takes its 5 V from a
 # USB-powered Wemos D1 mini, which polls it like the power board does: http://linap-power-emulator.local.
-# Wiring: ../linap-bench.kicad_sch (JP1 closed). Procedure: discovery/README.md.
+# Wiring: ../bench/linap-bench.kicad_sch (JP1 closed). Procedure: discovery/README.md.
 packages:
-  network: !include {file: ../../firmware/network.yaml, vars: {fallback_ap_ssid: "Linap-Power-Emulator"}}
-  hotspot: !include ../../firmware/hotspot-wifi.yaml
-  bench: !include ../linap-bench.yaml
-  transmitter: !include ../linap-transmitter.yaml
+  network: !include {file: ../esphome/network.yaml, vars: {fallback_ap_ssid: "Linap-Power-Emulator"}}
+  hotspot: !include ../esphome/hotspot-wifi.yaml
+  bench: !include ../esphome/linap-bench.yaml
+  transmitter: !include ../esphome/linap-transmitter.yaml
 
 esphome:
   name: linap-power-emulator

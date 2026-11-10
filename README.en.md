@@ -32,7 +32,7 @@ The board cuts the data wire and sits between the two (*man in the middle*). By 
 
 ```mermaid
 flowchart LR
-  HA[Home Assistant] <-- Wi-Fi --> C3[ESP<br>ESPHome]
+  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>Rust]
   CMD[Control box<br>screen, keys] <-- data --> C3
   C3 <-- data --> PWR[Power board<br>fluid, fan]
   PWR -. 5 V and ground, direct .- CMD
@@ -77,20 +77,22 @@ There is no documentation of this bus. It was decoded with a **Wemos D1 mini** w
 
 What will not change:
 
-- **A Wemos D1 mini** (ESP8266) running ESPHome: space is not an issue inside the radiator, and its antenna is better than a C3 super mini's, far from the router. An ESP32 would draw too much for the ribbon. How much slack the power board leaves to answer its polls is still to be measured.
-- **Powered by the ribbon**: the power board's 5 V holds about 160 mA in total, and a D1 mini plus the control box draw about 120 (VCC at 5.11 V, radiator power-ups and Boost validated). No more 230 V wiring. A 470 to 1000 µF capacitor next to the ESP absorbs the Wi-Fi peaks.
+- **An ESP32-C3 with an external antenna**, firmware in Rust: two full UARTs, one per channel, and interrupt-driven answers to the polls. Space is not an issue inside the radiator, and a good antenna matters, far from the router.
+- **Powered by the ribbon**: the power board's 5 V holds about 160 mA in total, and a D1 mini plus the control box draw about 120 (VCC at 5.11 V, radiator power-ups and Boost validated); the C3 is still to be measured. No more 230 V wiring. A 470 to 1000 µF capacitor next to the ESP absorbs the Wi-Fi peaks.
 - **On each channel**, the bench circuit: a voltage divider to read DATA, an NPN transistor to pull it low.
 - **The whole board is at mains potential**, like the control box: it must be fully enclosed, with nothing touchable, and updated over Wi-Fi only.
 
 ## Firmware
 
-The shared ESPHome configuration (Wi-Fi, API, OTA) is in `firmware/`. The final board's firmware is still to be written; meanwhile the bench firmwares run on a D1 mini:
+The board's firmware will be written in **Rust** for the ESP32-C3, in `firmware/` (to come): frame logic tested on a computer, interrupt-driven answers to the polls, link to Home Assistant.
+
+The bench firmwares are ESPHome configurations for a D1 mini, in `discovery/`:
 
 ```sh
 uv tool install esphome
-cp firmware/secrets.example.yaml firmware/secrets.yaml   # Wi-Fi, API key, OTA password
+cp discovery/esphome/secrets.example.yaml discovery/esphome/secrets.yaml   # Wi-Fi, API key, OTA password
 esphome run discovery/1-sniffer/linap-sniffer.yaml       # first flash over USB, before any wiring
-esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/decode.py
+esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/tools/decode.py
 ```
 
 ## In Home Assistant
@@ -123,4 +125,4 @@ All of `knowledge/` is in French.
 
 ---
 
-**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, ESPHome, Home Assistant, home automation, ESP8266, Wemos D1 mini, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.
+**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, Rust, esp-hal, embassy, ESP32-C3, ESPHome, Home Assistant, home automation, ESP8266, Wemos D1 mini, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.
