@@ -119,7 +119,6 @@ The control box only sends its effective setpoint: in Eco, Home Assistant sees t
 - [`knowledge/linap.md`](knowledge/linap.md): the internal bus, frame by frame, and the Linap board.
 - [`knowledge/architecture.md`](knowledge/architecture.md): the board's role, chosen design, rejected options, safety.
 - [`knowledge/backlog.md`](knowledge/backlog.md): what is left to do.
-- [`knowledge/fil-pilote.md`](knowledge/fil-pilote.md): first approach, through the pilot wire, set aside (board `hardware/pilot-wire/`).
 - `knowledge/manuals/`: Sauter manual.
 
 All of `knowledge/` is in French.

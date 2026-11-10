@@ -1,11 +1,10 @@
 # Matériel
 
-Cartes KiCad 10. Les deux cartes dessinées ici sont sur un ESP32-C3 super mini alimenté par un HLK-PM01 ; la carte MITM passera à un D1 mini alimenté par la nappe.
+Carte KiCad 10. La carte dessinée ici est sur un ESP32-C3 super mini alimenté par un HLK-PM01 ; la carte MITM passera à un D1 mini alimenté par la nappe.
 
 | Carte | Dossier | État | Détails |
 |---|---|---|---|
 | **Linap** | `linap/` | dessinée en dérivation sur le bus (C3, HLK-PM01, optocoupleurs), à redessiner pour le MITM : D1 mini alimenté par la nappe, deux voies | `knowledge/linap.md`, `knowledge/architecture.md` |
-| fil pilote + Boost | `pilot-wire/` | piste mise de côté, jamais fabriquée, gardée comme référence | `knowledge/fil-pilote.md` |
 
 Chaque dossier contient le schéma (`.kicad_sch`, rendu `.svg`), le circuit imprimé (`.kicad_pcb`, rendus `-top.png`, `-bottom.png`, `-3d.png`) et un modèle 3D `.step` pour le boîtier.
 
@@ -17,9 +16,9 @@ Chaque dossier contient le schéma (`.kicad_sch`, rendu `.svg`), le circuit impr
 
 ## Commander
 
-`hardware/export-fabrication.sh linap` (ou `pilot-wire`) produit dans `hardware/<carte>/fabrication/` :
+`hardware/export-fabrication.sh linap` produit dans `hardware/<carte>/fabrication/` :
 
-- `…-gerbers.zip`, les fichiers de fabrication JLCPCB (la carte fil pilote et sa carte Boost détachable forment un seul contour : vérifier au devis que JLCPCB ne la facture pas comme un panneau) ;
+- `…-gerbers.zip`, les fichiers de fabrication JLCPCB ;
 - `…-lcsc-cart.csv`, le panier pour le *BOM Tool* de LCSC : y désactiver les lignes `in stock` (résistances de 220 Ω et 1 kΩ déjà en stock) et, si JLCPCB assemble la carte, les lignes `JLCPCB` ;
 - `…-bom-jlcpcb.csv` et `…-cpl.csv`, pour l'assemblage facultatif des pièces CMS par JLCPCB ;
 - `…-bom.csv`, la liste complète des composants.

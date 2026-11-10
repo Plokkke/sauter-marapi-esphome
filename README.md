@@ -119,7 +119,6 @@ Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assis
 - [`knowledge/linap.md`](knowledge/linap.md) : le bus interne, trame par trame, et la carte Linap.
 - [`knowledge/architecture.md`](knowledge/architecture.md) : rôle de la carte, solution retenue, pistes écartées, sécurité.
 - [`knowledge/backlog.md`](knowledge/backlog.md) : ce qui reste à faire.
-- [`knowledge/fil-pilote.md`](knowledge/fil-pilote.md) : première piste, par le fil pilote, mise de côté (carte `hardware/pilot-wire/`).
 - `knowledge/manuals/` : notice Sauter.
 
 ---

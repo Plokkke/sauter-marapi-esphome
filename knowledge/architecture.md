@@ -22,7 +22,7 @@ Ce projet ne contient aucune automatisation HA.
 
 Écartés :
 
-- **Fil pilote + touche Boost simulée** (`fil-pilote.md`, carte `hardware/pilot-wire/`) : fonctionnait sans rien connaître du radiateur, mais sans retour d'état et avec un faux doigt sur la touche Boost.
+- **Fil pilote + touche Boost simulée** : une carte qui pilotait le radiateur par son fil pilote 6 ordres et déclenchait le Boost par un faux doigt (photoMOS et condensateur sur l'électrode de la touche). Elle fonctionnait sans rien connaître du radiateur, mais sans retour d'état, et le Boost passait par un artifice. Jamais fabriquée ; schéma, circuit imprimé, firmware et notes sont dans l'historique git (supprimés après le commit `c7eed15`).
 - **Contrôleur maison à la place de la carte de commande** : écran toujours juste, mais toute l'interface (touches, affichage, programme) à refaire. Reste le repli si le MITM échoue.
 
 ## Entités prévues

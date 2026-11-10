@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Project footprints, drawn from the datasheets of the parts ordered at LCSC (see README, "Commander").
+"""Project footprints, drawn from the datasheets of the parts ordered at LCSC (see hardware/README.md, "Commander").
 
 Writes every footprint into radiator-controller.pretty/, next to this script, or only the ones named as arguments.
 """
-import os
 import sys
 import uuid
 from pathlib import Path
 
 LIBRARY = Path(__file__).parent / "radiator-controller.pretty"
 MODELS = "${KICAD10_3DMODEL_DIR}"
-KICAD_FOOTPRINTS = Path(os.environ.get("KICAD10_FOOTPRINT_DIR", "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"))
 PITCH = 2.54
 FONT = "\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1 1)\n\t\t\t\t(thickness 0.15)\n\t\t\t)\n\t\t)"
 
@@ -35,13 +33,6 @@ TERMINAL_BACK, TERMINAL_FRONT = 5.4, 5.3
 VARISTOR_PITCH, VARISTOR_DISC, VARISTOR_THICKNESS = 5.0, 9.0, 4.8
 
 KF128_PARTS = {2: "LCSC C474952", 3: "LCSC C474953"}
-
-# JST B2B/B4B-PH-K-S (LCSC C131337 / C131334): 0.5 mm square pins (0.71 mm diagonal), 0.9 mm holes as recommended by XUNPU
-JST_PH_PINS = (2, 4)
-
-# Break-off bridge, as KiKit draws them: 0.5 mm holes every 0.8 mm, set 0.25 mm into each board so the break stays flush
-BRIDGE_WIDTH, BRIDGE_GAP = 3.0, 2.0
-BITE_DRILL, BITE_PITCH, BITE_INSET = 0.5, 0.8, 0.25
 
 
 def u():
@@ -185,43 +176,12 @@ def mov_07d():
                      [model("Varistor.3dshapes/RV_Disc_D9mm_W4.8mm_P5mm.step", offset_y=1.15)])
 
 
-def jst_ph(pins):
-    """KiCad's own footprint, holes widened from 0.75 to 0.9 mm and pads from 1.2 to 1.4 mm to keep the ring."""
-    name = f"JST_PH_B{pins}B-PH-K_1x0{pins}_P2.00mm_Vertical"
-    source = (KICAD_FOOTPRINTS / "Connector_JST.pretty" / f"{name}.kicad_mod").read_text()
-    return (source.replace(f'(footprint "{name}"', f'(footprint "{name}_Drill0.9"')
-            .replace("(drill 0.75)", "(drill 0.9)")
-            .replace("(size 1.2 1.75)", "(size 1.4 1.75)"))
-
-
-def npth(x, y, drill):
-    return (f'\t(pad "" np_thru_hole circle\n\t\t(at {round(x, 3)} {round(y, 3)})\n'
-            f"\t\t(size {drill} {drill})\n\t\t(drill {drill})\n"
-            '\t\t(layers "*.Cu" "*.Mask")\n'
-            f'\t\t(uuid "{u()}")\n\t)')
-
-
-def mouse_bites():
-    """Bridge across the gap at y = 0; a row of holes on each board edge (y = -+GAP/2)."""
-    count = int((BRIDGE_WIDTH - BITE_DRILL) // BITE_PITCH) + 1
-    xs = [(n - (count - 1) / 2) * BITE_PITCH for n in range(count)]
-    row = BRIDGE_GAP / 2 + BITE_INSET
-    holes = [npth(x, y, BITE_DRILL) for y in (-row, row) for x in xs]
-    items = [centred_rect("F.Fab", BRIDGE_WIDTH / 2, BRIDGE_GAP / 2), *holes]
-    descr = (f"Break-off bridge {BRIDGE_WIDTH} mm wide across a {BRIDGE_GAP} mm gap: {count} NPTH holes of "
-             f"{BITE_DRILL} mm every {BITE_PITCH} mm on each edge, {BITE_INSET} mm inside the board")
-    return footprint("Breakaway_MouseBites_3mm", descr, "board_only exclude_from_pos_files exclude_from_bom",
-                     row + 1.2, items)
-
-
 FOOTPRINTS = {
     "ESP32-C3_SuperMini_Outline": c3_outline,
     "PinSocket_1x08_P2.54mm_SMD_HX-ZQ": socket,
     "Converter_ACDC_HLK-PM01": hlk_pm01,
     "RV_Disc_D9mm_W4.8mm_P5mm_Inline": mov_07d,
     **{f"TerminalBlock_Kefa_KF128-5.08_1x0{n}": lambda n=n: kf128(n) for n in KF128_PARTS},
-    **{f"JST_PH_B{n}B-PH-K_1x0{n}_P2.00mm_Vertical_Drill0.9": lambda n=n: jst_ph(n) for n in JST_PH_PINS},
-    "Breakaway_MouseBites_3mm": mouse_bites,
 }
 
 if __name__ == "__main__":

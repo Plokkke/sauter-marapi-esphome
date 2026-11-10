@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gerbers, drill, JLCPCB BOM and placement, LCSC cart, renders for ordering one board (KiCad 10 kicad-cli).
-# Usage: export-fabrication.sh pilot-wire|linap
+# Usage: export-fabrication.sh linap   (the board folder under hardware/)
 set -euo pipefail
 
 cd "$(dirname "$0")/$1"
