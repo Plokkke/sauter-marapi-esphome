@@ -12,6 +12,9 @@ use static_cell::StaticCell;
 use crate::secrets::{WIFI_PASSWORD, WIFI_SSID};
 
 const RETRY: Duration = Duration::from_secs(5);
+/// In 0.25 dBm: 44 = 11 dBm. The esp-radio default (5 dBm) associates but loses DHCP; above ~16 dBm some boards
+/// fail to authenticate.
+const MAX_TX_POWER: i8 = 44;
 
 pub fn start(spawner: Spawner, wifi: WIFI<'static>) -> Stack<'static> {
     let station = Config::Station(
@@ -37,6 +40,9 @@ pub fn start(spawner: Spawner, wifi: WIFI<'static>) -> Stack<'static> {
 
 #[embassy_executor::task]
 async fn connection(mut controller: WifiController<'static>) {
+    if let Err(error) = controller.set_max_tx_power(MAX_TX_POWER) {
+        warn!("Wi-Fi TX power: {error:?}");
+    }
     loop {
         match controller.connect_async().await {
             Ok(_) => {

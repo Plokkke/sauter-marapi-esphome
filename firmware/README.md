@@ -25,7 +25,7 @@ Firmware Rust de la carte MITM : un ESP32-C3 sur la nappe coupée, entre la cart
 
 ## Home Assistant
 
-Découverte MQTT en un seul message (`homeassistant/device/sauter_marapi/config`), état en JSON sur `sauter-marapi/state` à chaque changement et toutes les 30 s, disponibilité sur `sauter-marapi/availability`.
+Découverte MQTT en un seul message (`homeassistant/device/sauter_marapi/config`), état en JSON sur `sauter-marapi/state` (retenu par le broker) à chaque changement et toutes les 30 s, disponibilité sur `sauter-marapi/availability`.
 
 | Entité | Type | Rôle |
 |---|---|---|
@@ -69,7 +69,7 @@ Dans HA, *Paramètres > Appareils et services > MQTT > Configurer > Écouter un 
 | carte de puissance | UART0 | GPIO4 | GPIO5 |
 | carte de commande | UART1 | GPIO6 | GPIO7 |
 
-Sur un XIAO ESP32-C3 : D2, D3, D4, D5. Les journaux passent par l'USB-JTAG, jamais par une UART du bus. La base des NPN doit avoir une résistance de rappel à la masse, sans quoi DATA risque d'être tiré à l'état bas au démarrage.
+Sur un XIAO ESP32-C3 : D2, D3, D4, D5. Puissance d'émission Wi-Fi fixée à 11 dBm : à la valeur par défaut d'esp-radio (5 dBm), un C3 super mini s'associe mais n'obtient jamais d'adresse par DHCP. Les journaux passent par l'USB-JTAG, jamais par une UART du bus. La base des NPN doit avoir une résistance de rappel à la masse, sans quoi DATA risque d'être tiré à l'état bas au démarrage.
 
 ## Construire et flasher
 

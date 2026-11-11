@@ -50,6 +50,9 @@ pub async fn run(stack: Stack<'static>) {
     let mut remote = Remote { setpoint, counts: (0, 0), changes: Changes::default() };
     loop {
         stack.wait_config_up().await;
+        if let Some(config) = stack.config_v4() {
+            info!("IP address {}", config.address);
+        }
         session(stack, &mut remote).await;
         warn!("MQTT session ended");
         Timer::after(RETRY).await;
@@ -77,6 +80,7 @@ async fn session(stack: Stack<'static>, remote: &mut Remote) {
         warn!("MQTT broker unreachable: {error:?}");
         return;
     }
+    info!("MQTT broker reached");
     let mut buffer = AllocBuffer;
     let mut client: Mqtt = Client::new(&mut buffer);
     if connect(&mut client, socket).await.is_some() && announce(&mut client).await.is_some() {
@@ -97,6 +101,7 @@ async fn connect<'s>(client: &mut Mqtt<'s, '_>, socket: TcpSocket<'s>) -> Option
     let options = options.will(will);
     let client_id = MqttString::try_from(CLIENT_ID).ok();
     client.connect(socket, &options, client_id).await.map_err(|error| warn!("MQTT connect: {error:?}")).ok()?;
+    info!("MQTT session open");
     Some(())
 }
 
@@ -113,6 +118,7 @@ async fn announce(client: &mut Mqtt<'_, '_>) -> Option<()> {
 }
 
 async fn serve(client: &mut Mqtt<'_, '_>, remote: &mut Remote) {
+    CHANGED.signal(());
     loop {
         let served = match select4(client.poll_header(), CHANGED.wait(), FRAMES.receive(), Timer::after(REFRESH)).await
         {
@@ -202,7 +208,9 @@ async fn publish_state(client: &mut Mqtt<'_, '_>, remote: &mut Remote) -> Option
     let percent = (new_polls > 0).then(|| answered.wrapping_sub(remote.counts.1) * 100 / new_polls);
     remote.counts = (polls, answered);
     let json = ha::state_json(&snapshot, remote.setpoint, bus::reply_gap_half_bits(), percent);
-    publish(client, ha::STATE, &json, false).await
+    publish(client, ha::STATE, &json, true).await?;
+    info!("state published");
+    Some(())
 }
 
 /// The setpoint the power board receives, when it receives one.

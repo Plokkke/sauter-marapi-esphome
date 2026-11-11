@@ -22,6 +22,7 @@ macro_rules! component {
 }
 
 pub const AVAILABILITY: &str = topic!("availability");
+/// Retained, so that Home Assistant has it as soon as it subscribes (after a restart, or a new discovery).
 pub const STATE: &str = topic!("state");
 pub const COMMANDS: &str = topic!("+/set");
 /// Frames heard on the bus, when the frame log is on: one line each, for the analysis of the unknown frames.
@@ -46,7 +47,7 @@ pub const DISCOVERY_PAYLOAD: &str = concat!(
     topic!("state"),
     "\",\"cmps\":{",
     component!(
-        "keys",
+        "keys_mode",
         "\"p\":\"sensor\",\"name\":\"Keys mode\",\"dev_cla\":\"enum\",\"ops\":[\"off\",\"boost\",\"on\"]"
     ),
     ",",
@@ -156,7 +157,7 @@ pub fn state_json(bus: &Snapshot, setpoint: Setpoint, reply_gap_half_bits: u32, 
         _ => String::from("null"),
     };
     format!(
-        "{{\"keys\":{},\"keys_setpoint\":{keys_setpoint},\"power\":{},\"heating\":{},\"control\":\"{}\",\
+        "{{\"keys_mode\":{},\"keys_setpoint\":{keys_setpoint},\"power\":{},\"heating\":{},\"control\":\"{}\",\
          \"setpoint\":{setpoint},\"boost_duration\":{},\"reply_gap\":{}.{},\"answered\":{},\"frame_log\":\"{}\",\"note\":\"\"}}",
         quoted(bus.keys.map(keys_name)),
         quoted(bus.power.map(PowerState::name)),
