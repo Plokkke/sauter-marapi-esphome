@@ -4,7 +4,7 @@ Un ESP32-C3 qui coupe le fil DATA de la nappe en deux : une voie vers la carte d
 
 ![Schéma de la carte MITM](linap-mitm.svg)
 
-Révision 1 (11/11/2026) : le montage de la plaque d'essai, avec le C3 super mini. Le circuit imprimé viendra une fois la plaque validée sur le radiateur.
+Révision 2 (11/11/2026) : le montage de la plaque d'essai, avec le C3 super mini ; ponts de lecture en 100 kΩ / 150 kΩ. Le circuit imprimé viendra une fois la plaque validée sur le radiateur.
 
 ## Les blocs
 
@@ -15,7 +15,7 @@ Révision 1 (11/11/2026) : le montage de la plaque d'essai, avec le C3 super min
 | Voie carte de puissance | J1, R1, R2, R3, R4, R5, Q1 | lecture par le pont R1/R2 sur GPIO4, émission par Q1 depuis GPIO5, rappel de DATA par R5 |
 | Voie boîtier de commande | J2, R6, R7, R8, R9, Q2 | lecture par le pont R6/R7 sur GPIO6, émission par Q2 depuis GPIO7 ; le boîtier fait son propre rappel |
 
-- **Pont diviseur** : 5,2 V × 15 kΩ / 25 kΩ ≈ 3,1 V sur l'entrée du C3, au-dessus de son seuil haut (≈ 2,5 V).
+- **Pont diviseur** : 5,2 V × 150 kΩ / 250 kΩ ≈ 3,1 V sur l'entrée du C3, au-dessus de son seuil haut (≈ 2,5 V). **Il doit charger DATA le moins possible** : le seul rappel de DATA est celui du boîtier de commande, et le boîtier ne reconnaît plus les appels quand DATA retombe vers 4,1 V au repos. Mesuré au bureau le 11/11/2026 : aucune réponse avec 10 k + 15 k (25 kΩ), une sur quatre et tronquée avec 20 k + 30 k (50 kΩ), toutes avec 100 k + 150 k (250 kΩ). Le rappel interne du C3 (≈ 45 kΩ) est coupé par le firmware, sinon l'entrée ne descendrait plus assez bas.
 - **Émission** : GPIO à l'état haut → NPN passant → DATA à la masse. L'UART du firmware est donc inversée.
 - **R4, R9** tiennent les NPN bloqués pendant le démarrage du C3. L'état de GPIO5 et GPIO7 pendant le reset reste à mesurer sur la plaque.
 
@@ -27,8 +27,9 @@ Révision 1 (11/11/2026) : le montage de la plaque d'essai, avec le C3 super min
 | J3, J4 | barrette femelle 1x8, pas de 2,54 | traversant | C27438 |
 | J1, J2 | connecteur de nappe 3 points | à choisir (celui d'origine si possible) | à choisir |
 | C1 | 470 µF 10 V | radial Ø 6,3 mm, pas de 2,5 mm | C43326 |
-| R1, R3, R4, R6, R8, R9 | 10 kΩ 1 % 1/4 W | axial | C57436 |
-| R2, R7 | 15 kΩ 1 % 1/4 W | axial | C138212 |
+| R1, R6 | 100 kΩ 1 % 1/4 W | axial | C172965 |
+| R2, R7 | 150 kΩ 1 % 1 W (pas de 1/4 W trouvée chez LCSC) | axial, 9 mm | C119513 |
+| R3, R4, R8, R9 | 10 kΩ 1 % 1/4 W | axial | C57436 |
 | R5 | 4,7 kΩ 5 % 1/4 W | axial | C1364279 |
 | Q1, Q2 | 2N3904 | TO-92 (E-B-C, face plate vers soi) | C2874602 |
 

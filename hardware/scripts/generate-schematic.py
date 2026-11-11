@@ -12,13 +12,16 @@ from kicad_sheet import (BROWN, GREEN, GREY, ORANGE, RED, TEAL, Module, Sheet, b
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "linap-mitm"
-REVISION, DATE = "1", "2026-11-11"
+REVISION, DATE = "2", "2026-11-11"
 LIBS = (("Device", "R"), ("Device", "C_Polarized"), ("Transistor_BJT", "Q_NPN_EBC"),
         ("Connector_Generic", "Conn_01x03"), ("Connector_Generic", "Conn_01x08"), ("power", "GND"),
         ("power", "+5V"), ("power", "PWR_FLAG"))
 
 RESISTOR = "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal"
-LCSC_10K, LCSC_15K, LCSC_4K7 = "C57436", "C138212", "C1364279"
+LCSC_10K, LCSC_4K7 = "C57436", "C1364279"
+# RX divider: 100k / 150k, so as not to load DATA (see the notes)
+LCSC_100K, LCSC_150K = "C172965", "C119513"
+RESISTOR_1W = "Resistor_THT:R_Axial_DIN0309_L9.0mm_D3.2mm_P12.70mm_Horizontal"
 NPN, LCSC_NPN, TO92 = "2N3904", "C2874602", "Package_TO_SOT_THT:TO-92_Inline"
 SOCKET, LCSC_SOCKET = "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical", "C27438"
 RIBBON = "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
@@ -51,13 +54,16 @@ NOTES = [
     "R4, R9 hold the NPNs off while the C3 boots",
     "(GPIO5/GPIO7 at reset: to measure).",
     "Q1, Q2: 2N3904 TO-92, E-B-C, flat side to you.",
+    "R1/R2, R6/R7 load DATA: the command board pull-up",
+    "(~6 k) fails at 25 k, is marginal at 50 k: 250 k.",
+    "No internal pull-up on the C3 RX pins (firmware).",
     "J1, J2: ribbon connectors still to choose (the",
     "original ones if possible), LCSC TBD.",
     "Firmware: firmware/mitm, UART0 power side,",
     "UART1 command side, TX inverted.",
     "Wires: orange +5 V, grey GND, magenta 3.3 V,",
     "green TX, teal RX, brown Linap bus.",
-    "Rev. 1 (2026-11-11): first MITM, breadboard.",
+    "Rev. 2 (2026-11-11): RX dividers 100k/150k.",
 ]
 
 
@@ -157,17 +163,17 @@ def channel(sheet, ch):
                   *wire([(pull_x, oy + 19.05), (pull_x, data_y)], BROWN), junction((pull_x, data_y)),
                   sheet.power("+5V", (pull_x, oy + 11.43))]
     return items + connector(sheet, ch, jx, jy) + [
-        text("RX: 5.2 V x 15k / 25k = 3.1 V. TX: GPIO high -> NPN on -> DATA low.", (ox + 2.54, oy + 59.69))]
+        text("RX: 5.2 V x 150k / 250k = 3.1 V. TX: GPIO high -> NPN on -> DATA low.", (ox + 2.54, oy + 59.69))]
 
 
 def divider(sheet, ch, ox, data_y, top, bottom):
     node = (ox + 17.78, data_y)
     return [
-        sheet.resistor(top, "10k", (ox + 27.94, data_y), horizontal=True, footprint=RESISTOR, lcsc=LCSC_10K),
+        sheet.resistor(top, "100k", (ox + 27.94, data_y), horizontal=True, footprint=RESISTOR, lcsc=LCSC_100K),
         *wire([(ox + 24.13, data_y), node, (ox + 5.08, data_y)], TEAL), junction(node),
         label(ch.rx, (ox + 5.08, data_y)),
-        sheet.resistor(bottom, "15k", (node[0], data_y + 7.62), horizontal=False, footprint=RESISTOR,
-                       lcsc=LCSC_15K),
+        sheet.resistor(bottom, "150k", (node[0], data_y + 7.62), horizontal=False, footprint=RESISTOR_1W,
+                       lcsc=LCSC_150K),
         *wire([node, (node[0], data_y + 3.81)], TEAL), sheet.power("GND", (node[0], data_y + 11.43)),
     ]
 
