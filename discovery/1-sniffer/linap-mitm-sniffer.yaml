@@ -1,0 +1,45 @@
+# Listens to both sides of the MITM board (hardware/), to debug it: a Wemos D1 mini on the C3's two RX pins, after
+# the board's own dividers (≈ 3.1 V, no divider needed here): D2 (GPIO4) on the C3's GPIO4 (power board <-> MITM),
+# D1 (GPIO5) on the C3's GPIO6 (MITM <-> commander), and GND. It hears both boards and the MITM's own frames.
+# Logs over Wi-Fi: esphome logs discovery/1-sniffer/linap-mitm-sniffer.yaml, http://linap-mitm-sniffer.local.
+# On the radiator it floats at mains potential with the MITM board, on the same floating supply: never USB there.
+packages:
+  network: !include {file: ../esphome/network.yaml, vars: {fallback_ap_ssid: "Linap-MITM-Sniffer"}}
+  hotspot: !include ../esphome/hotspot-wifi.yaml
+  bench: !include ../esphome/linap-bench.yaml
+
+esphome:
+  name: linap-mitm-sniffer
+  friendly_name: Linap MITM sniffer
+  includes:
+    - ../esphome/linap-frames.h
+    - mitm-sniffer.h
+
+# The pins only read (no pull-up): the board's dividers are high impedance. 2 ms of idle splits a poll byte, which
+# comes 13 ms after its frame, from the frame; its answer, 1 bit after it, stays with it.
+remote_receiver:
+  - id: power_half_receiver
+    pin:
+      number: GPIO4
+      inverted: true
+    idle: 2ms
+    filter: 4us
+    buffer_size: 2kb
+    on_raw:
+      - lambda: power_half.receive(x);
+  - id: command_half_receiver
+    pin:
+      number: GPIO5
+      inverted: true
+    idle: 2ms
+    filter: 4us
+    buffer_size: 2kb
+    on_raw:
+      - lambda: command_half.receive(x);
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          ESP_LOGI("bus", "power board <-> MITM: %s", power_half.report().c_str());
+          ESP_LOGI("bus", "MITM <-> commander: %s", command_half.report().c_str());

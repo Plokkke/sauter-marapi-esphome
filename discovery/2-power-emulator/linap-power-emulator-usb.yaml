@@ -1,0 +1,16 @@
+# Stage 2 with its logs on the D1 mini's USB, to check a board against it on the bench without Wi-Fi
+# (esphome logs linap-power-emulator-usb.yaml --device /dev/cu.usbserial-…). Same wiring as linap-power-emulator.yaml:
+# UART0 goes back to the USB for the logs, so the frames leave D8 through a software UART (bit-banged, 9600 baud).
+# Bench only, NO MAINS.
+packages:
+  stage2: !include linap-power-emulator.yaml
+
+esphome:
+  name: linap-power-emulator-usb
+
+logger:
+  hardware_uart: UART0
+
+uart:
+  id: uart_bus
+  rx_pin: !remove

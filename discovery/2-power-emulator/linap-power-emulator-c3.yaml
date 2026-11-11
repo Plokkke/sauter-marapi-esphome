@@ -1,0 +1,34 @@
+# Stage 2 on the MITM board (hardware/), to check the board and its C3 without the Rust firmware: the same fake
+# power board as linap-power-emulator.yaml, on the command board half (J2): TX on GPIO7 through Q2, DATA read on
+# GPIO6 through R6/R7. Bench only, NO MAINS: the C3 on USB powers the command board through J2.
+packages:
+  stage2: !include linap-power-emulator.yaml
+
+esphome:
+  name: linap-power-emulator-c3
+  friendly_name: Linap power emulator C3
+
+esp8266: !remove
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Logs over the native USB, as on the Rust firmware
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+uart:
+  id: uart_bus
+  tx_pin:
+    number: GPIO7 # through R8 to the base of Q2, whose collector pulls DATA low: inverted
+    inverted: true
+  rx_pin: !remove
+  baud_rate: 9600
+
+remote_receiver:
+  pin:
+    number: GPIO6 # through the R6 / R7 divider
+    inverted: true
+  buffer_size: !remove
