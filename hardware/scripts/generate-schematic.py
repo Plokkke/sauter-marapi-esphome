@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""Generates the KiCad schematic of the MITM board: an ESP32-C3 cutting the Linap DATA line in two.
+"""Generates the KiCad schematic of the MITM board: a Wemos D1 mini cutting the Linap DATA line in two.
 
 Usage: hardware/scripts/generate-schematic.py   (then hardware/scripts/check.sh: ERC and SVG export)
-Rules: CLAUDE.md. Firmware: firmware/mitm (pins in firmware/README.md).
+Rules: CLAUDE.md. Firmware: firmware/sauter-marapi.yaml (pins in its header).
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from kicad_sheet import (BROWN, GREEN, GREY, ORANGE, RED, TEAL, Module, Sheet, block, junction, label,
-                         lib_symbol, project_files, rectangle, text, title_block, wire)
+from kicad_sheet import (BROWN, GREEN, GREY, ORANGE, RED, TEAL, Sheet, block, junction, label, lib_symbol,
+                         project_files, rectangle, text, title_block, wire)
+from modules import D1_MINI
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "linap-mitm"
-REVISION, DATE = "2", "2026-11-11"
+REVISION, DATE = "3", "2026-11-11"
 LIBS = (("Device", "R"), ("Device", "C_Polarized"), ("Transistor_BJT", "Q_NPN_EBC"),
         ("Connector_Generic", "Conn_01x03"), ("Connector_Generic", "Conn_01x08"), ("power", "GND"),
         ("power", "+5V"), ("power", "PWR_FLAG"))
@@ -26,44 +27,37 @@ NPN, LCSC_NPN, TO92 = "2N3904", "C2874602", "Package_TO_SOT_THT:TO-92_Inline"
 SOCKET, LCSC_SOCKET = "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical", "C27438"
 RIBBON = "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
 
-C3 = Module(
-    name="ESP32-C3_SuperMini",
-    description="ESP32-C3 super mini (USB-C, 5 V in, 3.3 V LDO), two 1x8 rows in their physical place, top view, "
-                "USB end up",
-    datasheet="https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf",
-    left=(("GPIO5", "9", "bidirectional"), ("GPIO6", "10", "bidirectional"), ("GPIO7", "11", "bidirectional"),
-          ("GPIO8/LED", "12", "bidirectional"), ("GPIO9/BOOT", "13", "bidirectional"),
-          ("GPIO10", "14", "bidirectional"), ("GPIO20/RX", "15", "bidirectional"),
-          ("GPIO21/TX", "16", "bidirectional")),
-    right=(("5V", "1", "power_in"), ("GND", "2", "power_in"), ("3V3", "3", "power_out"),
-           ("GPIO4", "4", "bidirectional"), ("GPIO3", "5", "bidirectional"), ("GPIO2/STRAP", "6", "bidirectional"),
-           ("GPIO1", "7", "bidirectional"), ("GPIO0", "8", "bidirectional")),
-    pin_x=17.78, top_y=10.16, body=(12.7, 13.97, -12.7), top_text="USB", bottom_text="ANTENNA", pin_length=5.08)
+D1 = replace(D1_MINI, reference="MOD")
 MOD1 = (66.04, 55.88)
 SOCKET_OFFSET = 1.27
 
 FRAME_TITLE = "ON THE RADIATOR THE WHOLE BOARD IS AT MAINS POTENTIAL (Linap GND tied to neutral): no USB, no earth"
 NOTES = [
-    "MOD1: C3 super mini for the prototype; the final",
-    "module (external antenna) is still to choose.",
+    "MOD1: Wemos D1 mini (ESP8266); its PCB antenna",
+    "holds the link where the C3 super mini dropped it.",
     "Flash over USB BEFORE wiring. Never USB on the",
-    "radiator: the C3 5 V pin is tied to VBUS.",
+    "radiator: the whole board is at mains potential.",
     "Wire with the breaker OFF, lab supply floating.",
     "R5: DATA pull-up on the power board side; the",
     "command board pulls its own side up.",
-    "R4, R9 hold the NPNs off while the C3 boots",
-    "(GPIO5/GPIO7 at reset: to measure).",
+    "R4, R9 hold the NPNs off while the D1 boots; D8",
+    "(GPIO15) must stay low at boot: R3 + R4 and the",
+    "D1's own 10 k keep it there. D3/D4 must be high",
+    "at boot: they cannot drive an NPN.",
     "Q1, Q2: 2N3904 TO-92, E-B-C, flat side to you.",
     "R1/R2, R6/R7 load DATA: the command board pull-up",
     "(~6 k) fails at 25 k, is marginal at 50 k: 250 k.",
-    "No internal pull-up on the C3 RX pins (firmware).",
+    "No internal pull-up on D5/D7 (firmware).",
     "J1, J2: ribbon connectors still to choose (the",
     "original ones if possible), LCSC TBD.",
-    "Firmware: firmware/mitm, UART0 power side,",
-    "UART1 command side, TX inverted.",
+    "Firmware: firmware/ (ESPHome). Power side: UART0",
+    "swapped to D7/D8, TX inverted; command side:",
+    "receiver on D5, bit-banged TX on D6.",
     "Wires: orange +5 V, grey GND, magenta 3.3 V,",
     "green TX, teal RX, brown Linap bus.",
     "Rev. 2 (2026-11-11): RX dividers 100k/150k.",
+    "Rev. 3 (2026-11-11): Wemos D1 mini in place of",
+    "the ESP32-C3 super mini.",
 ]
 
 
@@ -80,27 +74,28 @@ class Channel:
     tx: str
 
 
-POWER = Channel("Power board side: J1, RX R1/R2 (GPIO4), TX Q1 (GPIO5), pull-up R5",
+POWER = Channel("Power board side: J1, RX R1/R2 (D7), TX Q1 (D8), pull-up R5",
                 (116.84, 27.94), ("J1", "Ribbon to the power board"), ("R1", "R2", "R3", "R4", "R5"), "Q1",
-                "LINAP_DATA_P", "GPIO4_RX_P", "GPIO5_TX_P")
-COMMAND = Channel("Command board side: J2, RX R6/R7 (GPIO6), TX Q2 (GPIO7)",
+                "LINAP_DATA_P", "D7_RX_P", "D8_TX_P")
+COMMAND = Channel("Command board side: J2, RX R6/R7 (D5), TX Q2 (D6)",
                   (116.84, 93.98), ("J2", "Ribbon to the command board"), ("R6", "R7", "R8", "R9", None), "Q2",
-                  "LINAP_DATA_C", "GPIO6_RX_C", "GPIO7_TX_C")
+                  "LINAP_DATA_C", "D5_RX_C", "D6_TX_C")
 
 
 def module(sheet):
-    pin = lambda name: C3.pin(MOD1, name)  # noqa: E731
-    sockets_y = round(pin("5V")[1] + 7.62, 2)
-    right_x, left_x = pin("5V")[0], pin("GPIO5")[0]
-    j3, j4 = (right_x + SOCKET_OFFSET, sockets_y), (left_x - SOCKET_OFFSET, sockets_y)
-    out_right, out_left = j3[0] + 5.08, j4[0] - 5.08
+    pin = lambda name: D1.pin(MOD1, name)  # noqa: E731
+    top = round(MOD1[1] - D1.top_y, 2)
+    sockets_y = round(top + 7.62, 2)
+    left_x, right_x = pin("RST")[0], pin("5V")[0]
+    j3, j4 = (left_x - SOCKET_OFFSET, sockets_y), (right_x + SOCKET_OFFSET, sockets_y)
+    out_left, out_right = j3[0] - 5.08, j4[0] + 5.08
     items = [*block((17.78, 27.94), (109.22, 78.74),
-                    "ESP32-C3 super mini (MOD1), plugged into J3 (pins 1-8) and J4 (pins 9-16)"),
-             sheet.symbol(f"{NAME}:{C3.name}", "MOD1", "ESP32-C3 super mini", MOD1, C3.numbers(),
-                          ref_at=(MOD1[0], MOD1[1] - 16.51), value_at=(MOD1[0], MOD1[1] + 17.78), on_board=False),
-             *socket(sheet, "J3", "Socket 1x8 (C3 pins 1-8)", j3, "y", (out_right - 3.81, 69.85)),
-             *socket(sheet, "J4", "Socket 1x8 (C3 pins 9-16)", j4, "", (out_left + 1.27, 69.85))]
-    for side, x, _ in C3.sides():
+                    "Wemos D1 mini (MOD1), plugged into J3 (pins 1-8) and J4 (pins 16-9)"),
+             sheet.symbol(f"{NAME}:{D1.name}", "MOD1", "Wemos D1 mini", MOD1, D1.numbers(),
+                          ref_at=(MOD1[0], MOD1[1] - 19.05), value_at=(MOD1[0], MOD1[1] - 16.51), on_board=False),
+             *socket(sheet, "J3", "Socket 1x8 (D1 pins 1-8)", j3, "", (out_left + 1.27, 72.39)),
+             *socket(sheet, "J4", "Socket 1x8 (D1 pins 16-9)", j4, "y", (out_right - 3.81, 72.39))]
+    for side, x, _ in D1.sides():
         for name, _, _ in side:
             y = pin(name.split("/")[0])[1]
             items += wire([(x + MOD1[0], y), (out_right if x > 0 else out_left, y)])
@@ -114,14 +109,13 @@ def socket(sheet, ref, value, at, mirror, text_at):
 
 
 def module_outputs(sheet, out_right, out_left):
-    y = lambda name: C3.pin(MOD1, name)[1]  # noqa: E731
+    y = lambda name: D1.pin(MOD1, name)[1]  # noqa: E731
+    five_v_x = out_right + 7.62
     return [
-        *wire([(out_right, y("5V")), (out_right + 3.81, y("5V"))], ORANGE), sheet.power("+5V", (out_right + 3.81, y("5V"))),
+        *wire([(out_right, y("5V")), (five_v_x, y("5V"))], ORANGE), sheet.power("+5V", (five_v_x, y("5V"))),
         sheet.power("GND", (out_right, y("GND")), rot=90),
-        *wire([(out_right, y("GPIO4")), (out_right + 5.08, y("GPIO4"))], TEAL),
-        label(POWER.rx, (out_right + 5.08, y("GPIO4"))),
-        *[item for pin, name, colour in (("GPIO5", POWER.tx, GREEN), ("GPIO6", COMMAND.rx, TEAL),
-                                         ("GPIO7", COMMAND.tx, GREEN))
+        *[item for pin, name, colour in (("D5", COMMAND.rx, TEAL), ("D6", COMMAND.tx, GREEN),
+                                         ("D7", POWER.rx, TEAL), ("D8", POWER.tx, GREEN))
           for item in (*wire([(out_left, y(pin)), (out_left - 5.08, y(pin))], colour),
                        label(name, (out_left - 5.08, y(pin)), angle=180))],
     ]
@@ -141,7 +135,7 @@ def supply(sheet):
         *wire([minus, (c1[0], 109.22)], GREY), sheet.power("GND", (c1[0], 109.22)),
         *wire([(c1[0], 106.68), (35.56, 106.68)], GREY), junction((c1[0], 106.68)),
         sheet.power("PWR_FLAG", (35.56, 106.68), rot=180),
-        text("C1 next to the C3 5 V pin:", (62.23, 96.52)), text("takes the Wi-Fi bursts (the ribbon", (62.23, 100.33)),
+        text("C1 next to the D1 5 V pin:", (62.23, 96.52)), text("takes the Wi-Fi bursts (the ribbon", (62.23, 100.33)),
         text("gives ~160 mA, command board included).", (62.23, 104.14)),
         text("VCC: straight from J1 pin 2 to J2 pin 2.", (62.23, 107.95)),
     ]
@@ -221,13 +215,13 @@ def frame():
 
 def main():
     sheet = Sheet(NAME)
-    libs = C3.symbol(f"{NAME}:{C3.name}") + "".join(lib_symbol(lib, name) for lib, name in LIBS)
+    libs = D1.symbol(f"{NAME}:{D1.name}") + "".join(lib_symbol(lib, name) for lib, name in LIBS)
     items = [*frame(), *module(sheet), *supply(sheet), *channel(sheet, POWER), *channel(sheet, COMMAND), *notes()]
-    block_ = title_block("Linap MITM - ESP32-C3 between the two boards", DATE, REVISION,
-                         "Sauter Marapi tactile - Rust on ESP32-C3",
+    block_ = title_block("Linap MITM - Wemos D1 mini between the two boards", DATE, REVISION,
+                         "Sauter Marapi tactile - ESPHome on Wemos D1 mini",
                          "DANGER: on the radiator the whole board is at mains potential (Linap GND tied to neutral)")
     sheet.write(ROOT / f"{NAME}.kicad_sch", "A4", block_, libs, items)
-    project_files(ROOT, NAME, C3, "ESP32-C3 super mini drawn as the board")
+    project_files(ROOT, NAME, D1, "Wemos D1 mini drawn as the board")
 
 
 main()
