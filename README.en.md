@@ -73,7 +73,7 @@ There is no documentation of this bus. It was decoded with a **Wemos D1 mini** w
 ## Hardware
 
 > [!NOTE]
-> Work in progress: the board is still to be drawn, with two channels and a receiver fast enough to answer within the bit that follows the poll ([backlog](knowledge/backlog.md), in French).
+> Work in progress: the breadboard schematic is drawn ([`hardware/`](hardware/README.md), in French), to be validated on the radiator before the PCB ([backlog](knowledge/backlog.md), in French).
 
 What will not change:
 

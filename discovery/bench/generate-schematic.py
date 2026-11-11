@@ -3,16 +3,16 @@
 
 Usage: discovery/bench/generate-schematic.py   (then check with kicad-cli sch erc, export with kicad-cli sch export svg)
 """
-import uuid
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT.parent.parent / "hardware" / "scripts"))
+from kicad_sheet import (GREEN, GREY, ORANGE, RED, Module, Sheet, junction, label, lib_symbol, no_connect,  # noqa: E402
+                         project_files, rectangle, text, title_block, wire)
+
 NAME = "linap-bench"
 REVISION, DATE = "2", "2026-11-08"
-KICAD_SYMBOLS = Path("/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols")
-FONT = "(effects (font (size 1.27 1.27)))"
-HIDDEN = "(effects (font (size 1.27 1.27)) (hide yes))"
-RED, GREY, GREEN, ORANGE = "(color 200 0 0 1)", "(color 90 90 90 1)", "(color 0 150 70 1)", "(color 230 120 0 1)"
 LIBS = (("Device", "R"), ("Device", "Q_NPN"), ("Jumper", "Jumper_2_Open"),
         ("Connector_Generic", "Conn_01x02"), ("Connector_Generic", "Conn_01x03"), ("power", "GND"),
         ("power", "PWR_FLAG"))
@@ -31,121 +31,30 @@ NOTES = [
 
 U1 = (114.3, 95.25)
 # D1 mini pins in their physical place, top view, antenna up, USB down: (name, number, electrical type)
-D1_LEFT = (("RST", "1", "input"), ("A0", "2", "input"), ("D0/GPIO16", "3", "bidirectional"),
-           ("D5/GPIO14", "4", "bidirectional"), ("D6/GPIO12", "5", "bidirectional"),
-           ("D7/GPIO13", "6", "bidirectional"), ("D8/GPIO15", "7", "bidirectional"), ("3V3", "8", "power_out"))
-D1_RIGHT = (("TX/GPIO1", "16", "bidirectional"), ("RX/GPIO3", "15", "bidirectional"),
-            ("D1/GPIO5", "14", "bidirectional"), ("D2/GPIO4", "13", "bidirectional"),
-            ("D3/GPIO0", "12", "bidirectional"), ("D4/GPIO2", "11", "bidirectional"), ("GND", "10", "power_in"),
-            ("5V", "9", "power_in"))
-D1_SIDES = ((D1_LEFT, -15.24, 0), (D1_RIGHT, 15.24, 180))
+D1 = Module(
+    name="WEMOS_D1_mini", reference="U", footprint="RF_Module:WEMOS_D1_mini_light",
+    description="Wemos D1 mini (ESP8266), pins in their physical place, top view, USB down",
+    datasheet="https://www.wemos.cc/en/latest/d1/d1_mini.html",
+    left=(("RST", "1", "input"), ("A0", "2", "input"), ("D0/GPIO16", "3", "bidirectional"),
+          ("D5/GPIO14", "4", "bidirectional"), ("D6/GPIO12", "5", "bidirectional"),
+          ("D7/GPIO13", "6", "bidirectional"), ("D8/GPIO15", "7", "bidirectional"), ("3V3", "8", "power_out")),
+    right=(("TX/GPIO1", "16", "bidirectional"), ("RX/GPIO3", "15", "bidirectional"),
+           ("D1/GPIO5", "14", "bidirectional"), ("D2/GPIO4", "13", "bidirectional"),
+           ("D3/GPIO0", "12", "bidirectional"), ("D4/GPIO2", "11", "bidirectional"), ("GND", "10", "power_in"),
+           ("5V", "9", "power_in")),
+    pin_x=15.24, top_y=8.89, body=(12.7, 13.97, -13.97), top_text="ANTENNA", bottom_text="USB")
 NODE_X, J2 = 170.18, (236.22, 96.52)
 DATA_X, R7_X, VCC_X = 205.74, 215.9, 220.98
 
 
-def u():
-    return str(uuid.uuid4())
-
-
-def d1_symbol(name):
-    """Wemos D1 mini drawn as the board: the two 1x8 rows in their physical order."""
-    pins = [f'(pin {kind} line (at {x} {round(8.89 - 2.54 * n, 2)} {angle}) (length 2.54) '
-            f'(name "{pin}" {FONT}) (number "{number}" {FONT}))'
-            for side, x, angle in D1_SIDES for n, (pin, number, kind) in enumerate(side)]
-    body = ('(symbol "WEMOS_D1_mini_0_1" (rectangle (start -12.7 13.97) (end 12.7 -13.97) '
-            '(stroke (width 0.254) (type default)) (fill (type background))) '
-            f'(text "ANTENNA" (at 0 11.43 0) {FONT}) (text "USB" (at 0 -11.43 0) {FONT}))')
-    props = [prop("Reference", "U", (0, 16.51)), prop("Value", "WEMOS_D1_mini", (0, -16.51)),
-             prop("Footprint", "RF_Module:WEMOS_D1_mini_light", (0, 0), True),
-             prop("Datasheet", "https://www.wemos.cc/en/latest/d1/d1_mini.html", (0, 0), True),
-             prop("Description", "Wemos D1 mini (ESP8266), pins in their physical place, top view, USB down",
-                  (0, 0), True)]
-    return (f'\t(symbol "{name}" (exclude_from_sim no) (in_bom yes) (on_board yes) {" ".join(props)} {body} '
-            f'(symbol "WEMOS_D1_mini_1_1" {" ".join(pins)}))\n')
-
-
-def lib_symbol(lib, name):
-    text = (KICAD_SYMBOLS / f"{lib}.kicad_sym").read_text()
-    start = text.index(f'\n\t(symbol "{name}"\n') + 1
-    end = text.index("\n\t)\n", start) + 3
-    block = text[start:end].replace(f'(symbol "{name}"', f'(symbol "{lib}:{name}"', 1)
-    return "".join("\t" + line for line in block.splitlines(keepends=True))
-
-
-def prop(name, value, at, hidden=False, angle=0):
-    return f'(property "{name}" "{value}" (at {at[0]} {at[1]} {angle}) {HIDDEN if hidden else FONT})'
-
-
-class Sheet:
-    """The schematic being written: its uuid and power symbol counter."""
-
-    def __init__(self):
-        self.uuid, self.power_count = u(), 0
-
-    def symbol(self, lib_id, ref, value, at, pins, rot=0, ref_at=None, value_at=None, power=False,
-               footprint="", value_hidden=False, dnp=False):
-        x, y = at
-        props = [prop("Reference", ref, ref_at or (x, y - 5.08), hidden=power, angle=rot),
-                 prop("Value", value, value_at or (x, y + 5.08), hidden=value_hidden, angle=rot),
-                 prop("Footprint", footprint, at, True), prop("Datasheet", "", at, True),
-                 prop("Description", "", at, True)]
-        head = (f'(symbol (lib_id "{lib_id}") (at {x} {y} {rot}) (unit 1) '
-                f'(body_style 1) (exclude_from_sim no) (in_bom {"no" if power else "yes"}) (on_board yes) '
-                f'(in_pos_files yes) (dnp {"yes" if dnp else "no"}) (uuid "{u()}")')
-        pin_part = " ".join(f'(pin "{p}" (uuid "{u()}"))' for p in pins)
-        inst = f'(instances (project "{NAME}" (path "/{self.uuid}" (reference "{ref}") (unit 1))))'
-        return f"\t{head} {' '.join(props)} {pin_part} {inst})"
-
-    def power(self, name, at, rot=0):
-        self.power_count += 1
-        flag = name == "PWR_FLAG"
-        return self.symbol(f"power:{name}", f"#FLG{self.power_count:02}" if flag else f"#PWR{self.power_count:02}",
-                           name, at, ["1"], rot=rot, power=True, value_hidden=True)
-
-    def resistor(self, ref, value, at, horizontal, dnp=False, text_at=None):
-        x, y = at
-        text_at = text_at or (((x, y - 3.81), (x, y + 3.81)) if horizontal
-                              else ((x + 2.54, y - 1.27), (x + 2.54, y + 1.27)))
-        return self.symbol("Device:R", ref, value, at, ["1", "2"], rot=90 if horizontal else 0,
-                           ref_at=text_at[0], value_at=text_at[1], dnp=dnp)
-
-
-def wire(points, color=""):
-    stroke = f"(stroke (width 0.25) (type default) {color})" if color else "(stroke (width 0.25) (type default))"
-    return [f'\t(wire (pts (xy {a[0]} {a[1]}) (xy {b[0]} {b[1]})) {stroke} (uuid "{u()}"))'
-            for a, b in zip(points, points[1:])]
-
-
-def text(value, at, size=1.27, bold=False, color=""):
-    font = f"(font (size {size} {size}){' (bold yes)' if bold else ''}{' ' + color if color else ''})"
-    return (f'\t(text "{value}" (exclude_from_sim no) (at {at[0]} {at[1]} 0) (effects {font} '
-            f'(justify left bottom)) (uuid "{u()}"))')
-
-
-def label(name, at):
-    return f'\t(label "{name}" (at {at[0]} {at[1]} 0) {FONT[:-1]} (justify left bottom)) (uuid "{u()}"))'
-
-
-def no_connect(at):
-    return f'\t(no_connect (at {at[0]} {at[1]}) (uuid "{u()}"))'
-
-
-def junction(at):
-    return f'\t(junction (at {at[0]} {at[1]}) (diameter 0) (color 0 0 0 0) (uuid "{u()}"))'
-
-
 def d1(pin):
     """Schematic position of a D1 mini pin, by its short name (D2, 5V...)."""
-    for side, x, _ in D1_SIDES:
-        names = [name.split("/")[0] for name, _, _ in side]
-        if pin in names:
-            return round(U1[0] + x, 2), round(U1[1] - 8.89 + 2.54 * names.index(pin), 2)
-    raise KeyError(pin)
+    return D1.pin(U1, pin)
 
 
 def module(sheet, used):
-    pins = [(name.split("/")[0], number) for side, _, _ in D1_SIDES for name, number, _ in side]
-    return [sheet.symbol(f"{NAME}:WEMOS_D1_mini", "U1", "Wemos D1 mini", U1, [number for _, number in pins],
+    pins = [(name.split("/")[0], number) for side, _, _ in D1.sides() for name, number, _ in side]
+    return [sheet.symbol(f"{NAME}:WEMOS_D1_mini", "U1", "Wemos D1 mini", U1, D1.numbers(),
                          ref_at=(U1[0], U1[1] - 16.51), value_at=(U1[0], U1[1] + 16.51),
                          footprint="RF_Module:WEMOS_D1_mini_light"),
             *[no_connect(d1(pin)) for pin, _ in pins if pin not in used]]
@@ -230,8 +139,7 @@ def ribbon(sheet):
 def frame():
     lines = [text(FRAME_TITLE, (58.42, 52.07), size=1.8, bold=True, color=RED), text("Notes", (58.42, 137.16), bold=True)]
     lines += [text(line, (58.42, 140.97 + 3.81 * n)) for n, line in enumerate(NOTES)]
-    return [f'\t(rectangle (start 55.88 45.72) (end 287.02 175.26) (stroke (width 0.6) (type dash) {RED}) '
-            f'(fill (type none)) (uuid "{u()}"))', *lines]
+    return [rectangle((55.88, 45.72), (287.02, 175.26), 0.6, "dash", RED), *lines]
 
 
 def items(sheet):
@@ -242,29 +150,13 @@ def items(sheet):
 
 
 def main():
-    sheet = Sheet()
-    libs = d1_symbol(f"{NAME}:WEMOS_D1_mini") + "".join(lib_symbol(lib, name) for lib, name in LIBS)
-    body = "\n".join(items(sheet))
-    (ROOT / f"{NAME}.kicad_sch").write_text(f'''(kicad_sch
-\t(version 20260306)
-\t(generator "eeschema")
-\t(generator_version "10.0")
-\t(uuid "{sheet.uuid}")
-\t(paper "A3")
-\t(title_block (title "Linap bench - Wemos D1 mini on the Linap bus") (date "{DATE}") (rev "{REVISION}") (company "Plokkke") (comment 1 "Sauter Marapi tactile - Linap bus discovery") (comment 2 "Firmwares: discovery/<stage>/*.yaml - procedure and revisions: discovery/README.md"))
-\t(lib_symbols
-{libs}\t)
-{body}
-\t(sheet_instances (path "/" (page "1")))
-\t(embedded_fonts no)
-)
-''')
-    (ROOT / f"{NAME}.kicad_sym").write_text(
-        f'(kicad_symbol_lib\n\t(version 20241209)\n\t(generator "{NAME}")\n{d1_symbol("WEMOS_D1_mini")})\n')
-    (ROOT / "sym-lib-table").write_text(
-        f'(sym_lib_table\n  (version 7)\n  (lib (name "{NAME}")(type "KiCad")(uri "${{KIPRJMOD}}/{NAME}.kicad_sym")'
-        '(options "")(descr "Wemos D1 mini drawn as the board"))\n)\n')
-    (ROOT / f"{NAME}.kicad_pro").write_text(f'{{\n  "meta": {{\n    "filename": "{NAME}.kicad_pro",\n    "version": 3\n  }}\n}}\n')
+    sheet = Sheet(NAME)
+    libs = D1.symbol(f"{NAME}:WEMOS_D1_mini") + "".join(lib_symbol(lib, name) for lib, name in LIBS)
+    block = title_block("Linap bench - Wemos D1 mini on the Linap bus", DATE, REVISION,
+                        "Sauter Marapi tactile - Linap bus discovery",
+                        "Firmwares: discovery/<stage>/*.yaml - procedure and revisions: discovery/README.md")
+    sheet.write(ROOT / f"{NAME}.kicad_sch", "A3", block, libs, items(sheet))
+    project_files(ROOT, NAME, D1, "Wemos D1 mini drawn as the board")
 
 
 main()

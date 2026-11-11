@@ -73,7 +73,7 @@ Aucune documentation n'existe sur ce bus. Il a été décodé avec un **Wemos D1
 ## Le matériel
 
 > [!NOTE]
-> En cours de conception : la carte reste à dessiner, avec deux voies et une réception assez rapide pour répondre dans le bit qui suit l'appel ([backlog](knowledge/backlog.md)).
+> En cours : le schéma de la plaque d'essai est dessiné ([`hardware/`](hardware/README.md)), à valider sur le radiateur avant le circuit imprimé ([backlog](knowledge/backlog.md)).
 
 Ce qui ne changera pas :
 

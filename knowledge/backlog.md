@@ -12,11 +12,9 @@
 
 ## Carte MITM
 
-- [ ] Dessiner la carte MITM (`hardware/`, règles de dessin dans `CLAUDE.md`) :
-  - sur un ESP32-C3 à antenne externe, alimenté par la nappe, avec un condensateur de 470 à 1000 µF ;
-  - deux voies, côté commande et côté puissance, chacune avec le montage du banc (pont diviseur en lecture, NPN en émission) ;
-  - le rappel de DATA à l'état haut côté carte de puissance (≈ 5 kΩ vers VCC), que la carte de commande ne fait plus ;
-  - deux connecteurs pour la nappe coupée (GND, VCC, DATA de chaque côté).
+- [x] Schéma de la carte MITM, révision 1 pour la plaque d'essai (`hardware/`) : C3 super mini, deux voies (pont diviseur, NPN avec rappel de base), rappel de DATA côté carte de puissance, C1 de 470 µF.
+- [ ] Plaque d'essai sur le radiateur : voie carte de puissance seule, puis MITM complet (`hardware/README.md`). Mesurer l'état de GPIO5 et GPIO7 pendant le reset du C3.
+- [ ] Choisir les connecteurs de la nappe (J1, J2) et le module C3 définitif (antenne externe), puis le circuit imprimé : empreintes, isolement, DRC, export (`CLAUDE.md`).
 - [ ] Mesurer la place libre dans le boîtier de commande et choisir où loger la carte et comment couper la nappe (rallonge à connecteurs d'origine si possible).
 - [ ] Choisir la carte C3 (antenne externe) et mesurer sa consommation sur la nappe, Wi-Fi actif, démarrages du radiateur et Boost compris.
 - [ ] Mesurer la marge de réponse de la carte de puissance (étape 3, réglage « Reply gap » à 2, 5, 10, 20 bits, Boost à chaque palier) : elle fixe la contrainte de temps du firmware.
