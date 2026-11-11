@@ -1,0 +1,133 @@
+# The Linap MITM of the Sauter Marapi towel radiator, on a Wemos D1 mini wired into the MITM board (hardware/), in
+# place of the C3: power board side, D7 (GPIO13) on the R1/R2 midpoint and D8 (GPIO15) on R3; commander side,
+# D5 (GPIO14) on the R6/R7 midpoint and D6 (GPIO12) on R8; 5 V and GND from the floating supply.
+# On the radiator the whole board is at mains potential: flash over USB before wiring it, then OTA only.
+# Build: esphome run firmware/sauter-marapi.yaml. Logic tests: firmware/tests/run.sh.
+packages:
+  network: !include {file: ../discovery/esphome/network.yaml, vars: {fallback_ap_ssid: "Sauter-Marapi"}}
+
+esphome:
+  name: sauter-marapi
+  friendly_name: Sauter Marapi
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [linap_mitm]
+
+esp8266:
+  board: d1_mini
+  # The state survives a power cut, not only a reset
+  restore_from_flash: true
+
+# UART0 serves the power board side: the logs go over Wi-Fi only
+logger:
+  baud_rate: 0
+
+linap_mitm:
+  id: mitm
+
+# The commander side, our own frames included: one burst at a time (a poll byte comes 13 ms after its frame, the
+# answer 1 bit after the poll byte)
+remote_receiver:
+  pin:
+    number: GPIO14
+    inverted: true
+  idle: 2ms
+  filter: 4us
+  buffer_size: 2kb
+  on_raw:
+    - lambda: id(mitm).on_commander_levels(x);
+
+select:
+  - platform: template
+    name: Mode
+    options: ["off", "on", "boost"]
+    lambda: return id(mitm).mode();
+    update_interval: 1s
+    set_action:
+      - lambda: id(mitm).order_mode(x);
+
+number:
+  - platform: template
+    name: Setpoint
+    device_class: temperature
+    unit_of_measurement: °C
+    min_value: 5
+    max_value: 30
+    step: 0.5
+    mode: box
+    lambda: return id(mitm).setpoint();
+    update_interval: 1s
+    set_action:
+      - lambda: id(mitm).order_setpoint(x);
+  # How long a Boost ordered by Home Assistant lasts; ordering it again restarts it
+  - platform: template
+    name: Boost duration
+    entity_category: config
+    device_class: duration
+    unit_of_measurement: min
+    min_value: 1
+    max_value: 120
+    step: 1
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    on_value:
+      - lambda: id(mitm).set_boost_minutes(x);
+  # Idle time between the power board's poll byte and our answer: the real commander leaves 1 bit
+  - platform: template
+    name: Reply gap
+    entity_category: config
+    unit_of_measurement: bits
+    min_value: 0
+    max_value: 30
+    step: 0.5
+    mode: box
+    optimistic: true
+    restore_value: true
+    initial_value: 1
+    on_value:
+      - lambda: id(mitm).set_reply_gap_bits(x);
+
+switch:
+  # Every frame that changes, on both sides, in the logs
+  - platform: template
+    name: Frame log
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - lambda: id(mitm).set_frame_log(true);
+    turn_off_action:
+      - lambda: id(mitm).set_frame_log(false);
+
+text_sensor:
+  - platform: template
+    name: Power board
+    lambda: return id(mitm).power_board();
+    update_interval: 2s
+
+binary_sensor:
+  - platform: template
+    name: Heating
+    device_class: heat
+    lambda: return id(mitm).heating();
+
+sensor:
+  - platform: template
+    name: Power board polls answered
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    lambda: return id(mitm).power_board_answered();
+    update_interval: 10s
+  - platform: template
+    name: Commander polls answered
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    lambda: return id(mitm).commander_answered();
+    update_interval: 10s

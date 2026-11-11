@@ -7,7 +7,7 @@ Control your Sauter Marapi towel radiator from Home Assistant while keeping its 
 ![The Marapi control box, opened](knowledge/photos/command-board-in-box.jpg)
 
 > [!NOTE]
-> **Project status.** The internal bus protocol is decoded, and both halves of the design are proven with an ESP on the bench: it drives the power board on the radiator, and it reads the control box on the bench. The Rust firmware of the board is written and builds, not yet tried on the radiator; the final board and its enclosure are still to be done.
+> **Project status.** The internal bus protocol is decoded, and the MITM board works on the radiator (breadboard, Wemos D1 mini, ESPHome firmware): the keys and Home Assistant drive the power board. Still to do: the temperature, powering from the ribbon, the PCB and the enclosure.
 
 ## What it does
 
@@ -15,7 +15,7 @@ Control your Sauter Marapi towel radiator from Home Assistant while keeping its 
 - **Control it from Home Assistant**: setpoint, Boost (fan), off.
 - **Keep the original appliance**: the screen and keys keep working as before; the last one to speak, key or Home Assistant, wins.
 - **Nothing to wire to 230 V**: the board runs from the ribbon's 5 V, like the control box.
-- **Safe**: without Home Assistant the board just passes everything through, and the radiator works as it did originally. If the board itself fails, the radiator stops ("Err 10"): unplug it and reconnect the original ribbon.
+- **Safe**: without Home Assistant the keys still drive the radiator, and a Boost started by Home Assistant ends on its own. If the board itself fails, the radiator stops ("Err 10"): unplug it and reconnect the original ribbon.
 
 ## Compatibility
 
@@ -28,15 +28,15 @@ The radiator has two boards, joined by a three-wire ribbon (ground, 5 V, data):
 - the **control box** (screen, capacitive keys) chooses the setpoint, the mode and the Boost;
 - the **power board** heats the fluid and runs the fan, based on its own temperature sensor. It leads the exchange: it **polls** the control box several times a second, and the control box answers with its state.
 
-The board cuts the data wire and sits between the two (*man in the middle*). By default it **relays** the control box's state to the power board, and Home Assistant sees what happens. On Home Assistant's request it **answers instead of** the control box, until the next key press.
+The board cuts the data wire and sits between the two (*man in the middle*). It holds **its own state** (off, on at a setpoint, Boost) and gives it to the power board when answering its polls. Towards the control box it plays the power board: it polls it and reads its answers. The keys and Home Assistant change that state; the last order wins.
 
 ```mermaid
 flowchart LR
-  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>Rust]
-  CMD[Control box<br>screen, keys] <-- data --> C3
-  C3 <-- data --> PWR[Power board<br>fluid, fan]
+  HA[Home Assistant] <-- Wi-Fi --> D1[Wemos D1 mini<br>ESPHome]
+  CMD[Control box<br>screen, keys] <-- data --> D1
+  D1 <-- data --> PWR[Power board<br>fluid, fan]
   PWR -. 5 V and ground, direct .- CMD
-  PWR -. 5 V .-> C3
+  PWR -. 5 V .-> D1
 ```
 
 **Limitation**: the control box accepts no order over the bus. Its screen always shows what was set on its keys: a Boost started by Home Assistant does not show there.
@@ -73,53 +73,52 @@ There is no documentation of this bus. It was decoded with a **Wemos D1 mini** w
 ## Hardware
 
 > [!NOTE]
-> Work in progress: the breadboard schematic is drawn ([`hardware/`](hardware/README.md), in French), to be validated on the radiator before the PCB ([backlog](knowledge/backlog.md), in French).
+> Work in progress: the breadboard ([`hardware/`](hardware/README.md), in French) works on the radiator; the PCB is next ([backlog](knowledge/backlog.md), in French).
 
 What will not change:
 
-- **An ESP32-C3 with an external antenna**, firmware in Rust: two full UARTs, one per channel, and interrupt-driven answers to the polls. Space is not an issue inside the radiator, and a good antenna matters, far from the router.
-- **Powered by the ribbon**: the power board's 5 V holds about 160 mA in total, and a D1 mini plus the control box draw about 120 (VCC at 5.11 V, radiator power-ups and Boost validated); the C3 is still to be measured. No more 230 V wiring. A 470 to 1000 µF capacitor next to the ESP absorbs the Wi-Fi peaks.
+- **A Wemos D1 mini** (ESP8266), ESPHome firmware with a C++ component: the answers to the polls leave from our own interrupts. Its PCB antenna holds the link on the radiator, where an ESP32-C3 super mini lost it.
+- **Powered by the ribbon**, in principle: the power board's 5 V holds about 160 mA in total, and a D1 mini plus the control box draw about 120 (VCC at 5.11 V, radiator power-ups and Boost validated during discovery). Still to be confirmed with the MITM board, so far tried on a lab supply. A 470 µF capacitor next to the ESP absorbs the Wi-Fi peaks.
 - **On each channel**, the bench circuit: a voltage divider to read DATA, an NPN transistor to pull it low.
 - **The whole board is at mains potential**, like the control box: it must be fully enclosed, with nothing touchable, and updated over Wi-Fi only.
 
 ## Firmware
 
-The board's firmware is in **Rust** for the ESP32-C3, in [`firmware/`](firmware/README.md) (in French): frame logic tested on a computer (`linap/`), interrupt-driven answers to the polls and MQTT link to Home Assistant (`mitm/`).
+The board's firmware is an **ESPHome** configuration for the D1 mini, with a C++ component, in [`firmware/`](firmware/README.md) (in French): frame logic tested on a computer, interrupt-driven answers to the polls; Wi-Fi, Home Assistant API and OTA from ESPHome.
 
 ```sh
-cp firmware/secrets.example.env firmware/secrets.env   # Wi-Fi and MQTT account
-(cd firmware/linap && cargo test)
-(cd firmware/mitm && cargo run --release)             # USB flash, before any wiring
+uv tool install esphome
+cp discovery/esphome/secrets.example.yaml discovery/esphome/secrets.yaml   # Wi-Fi, API key, OTA password
+firmware/tests/run.sh
+esphome run firmware/sauter-marapi.yaml        # first flash over USB, before any wiring; OTA afterwards
 ```
 
 The bench firmwares are ESPHome configurations for a D1 mini, in `discovery/`:
 
 ```sh
-uv tool install esphome
-cp discovery/esphome/secrets.example.yaml discovery/esphome/secrets.yaml   # Wi-Fi, API key, OTA password
 esphome run discovery/1-sniffer/linap-sniffer.yaml       # first flash over USB, before any wiring
 esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/tools/decode.py
 ```
 
 ## In Home Assistant
 
-Through MQTT discovery (details: [`firmware/README.md`](firmware/README.md)):
+Through the ESPHome integration (details: [`firmware/README.md`](firmware/README.md), in French):
 
 | Entity | Use |
 |---|---|
-| Keys mode, Keys setpoint | what is set on the keys |
+| Mode | `off`, `on`, `boost`: the board's state, changed by the keys or by Home Assistant |
+| Setpoint | the setpoint |
 | Power board, Heating | what the power board does: idle, heating, Boost, off |
-| Control | `relay` (the keys, default), `setpoint`, `boost`, `off` (imposed) |
-| Setpoint | the setpoint in force; setting it from Home Assistant imposes it |
+| Boost duration | how long a Boost started by Home Assistant lasts (30 min by default) |
 
-The last order wins: an order from Home Assistant replaces the keys' one, and the next change made on the keys takes over again.
+The last order wins: an order from Home Assistant replaces the keys' one, and the next change made on the keys replaces it in turn. At start-up the board resumes its saved state.
 
 The control box only sends its effective setpoint: in Eco, Home Assistant sees the Eco setpoint, without knowing it is Eco.
 
 ## Known limitations
 
 - **Screen not synchronised**: what Home Assistant imposes does not show on the screen.
-- **No temperature** yet: the power board has its sensor, but which frame carries the reading is not known yet.
+- **No temperature** yet: the power board has its sensor, and a long capture is looking for the frame that carries the reading.
 - **Warranty**: opening the control box voids the warranty (2 years).
 
 ## Going further
@@ -133,4 +132,4 @@ All of `knowledge/` is in French.
 
 ---
 
-**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, Rust, esp-hal, embassy, ESP32-C3, ESPHome, Home Assistant, home automation, ESP8266, Wemos D1 mini, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.
+**Keywords**: Sauter Marapi tactile, electric towel radiator, towel warmer, bathroom fan heater, Groupe Atlantic, Thermor, Atlantic, internal bus, Linap link, Err 10, man in the middle, reverse engineering, ESPHome, C++ external component, Home Assistant, home automation, ESP8266, Wemos D1 mini, control board `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, KiCad PCB.

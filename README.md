@@ -7,7 +7,7 @@ Pilotez votre sèche-serviettes Sauter Marapi depuis Home Assistant, en gardant 
 ![Boîtier de commande du Marapi, ouvert](knowledge/photos/command-board-in-box.jpg)
 
 > [!NOTE]
-> **État du projet.** Le protocole du bus interne est décodé, et les deux moitiés du montage sont validées avec un ESP sur table : il pilote la carte de puissance sur le radiateur, et il lit le boîtier de commande au banc. Le firmware Rust de la carte est écrit et compile, pas encore essayé sur le radiateur ; la carte définitive et son boîtier restent à faire.
+> **État du projet.** Le protocole du bus interne est décodé, et la carte MITM marche sur le radiateur (plaque d'essai, Wemos D1 mini, firmware ESPHome) : les touches et Home Assistant pilotent la carte de puissance. Restent la température, l'alimentation par la nappe, le circuit imprimé et le boîtier.
 
 ## Ce que ça permet
 
@@ -15,7 +15,7 @@ Pilotez votre sèche-serviettes Sauter Marapi depuis Home Assistant, en gardant 
 - **Le régler depuis Home Assistant** : consigne, Boost (soufflerie), arrêt.
 - **Garder l'appareil d'origine** : l'écran et les touches continuent de marcher comme avant ; le dernier qui parle, touche ou Home Assistant, a raison.
 - **Rien à brancher sur le 230 V** : la carte s'alimente sur le 5 V de la nappe, comme le boîtier de commande.
-- **Sans risque** : sans Home Assistant, la carte se contente de transmettre, et le radiateur marche comme d'origine. Si la carte elle-même tombe en panne, le radiateur s'arrête (« Err 10 ») : il suffit de la débrancher et de reconnecter la nappe d'origine.
+- **Sans risque** : sans Home Assistant, les touches pilotent toujours le radiateur, et un Boost lancé par Home Assistant s'arrête de lui-même. Si la carte elle-même tombe en panne, le radiateur s'arrête (« Err 10 ») : il suffit de la débrancher et de reconnecter la nappe d'origine.
 
 ## Compatibilité
 
@@ -28,15 +28,15 @@ Le radiateur a deux cartes, reliées par une nappe de trois fils (masse, 5 V, do
 - le **boîtier de commande** (écran, touches tactiles) choisit la consigne, le mode et le Boost ;
 - la **carte de puissance** chauffe le fluide et fait tourner la soufflerie, d'après sa propre sonde de température. Elle mène le dialogue : elle **appelle** le boîtier de commande plusieurs fois par seconde, et il répond par son état.
 
-La carte coupe le fil de données et se place entre les deux, comme un intermédiaire (*man in the middle*). Par défaut, elle **relaie** l'état du boîtier de commande à la carte de puissance, et Home Assistant voit ce qui se passe. Sur ordre de Home Assistant, elle **répond à la place** du boîtier de commande, jusqu'au prochain appui sur une touche.
+La carte coupe le fil de données et se place entre les deux, comme un intermédiaire (*man in the middle*). Elle a **son propre état** (arrêt, marche à une consigne, Boost), qu'elle donne à la carte de puissance en répondant à ses appels. Face au boîtier de commande, elle joue la carte de puissance : elle l'appelle et lit ses réponses. Les touches et Home Assistant changent cet état ; le dernier ordre gagne.
 
 ```mermaid
 flowchart LR
-  HA[Home Assistant] <-- Wi-Fi --> C3[ESP32-C3<br>Rust]
-  CMD[Boîtier de commande<br>écran, touches] <-- données --> C3
-  C3 <-- données --> PWR[Carte de puissance<br>fluide, soufflerie]
+  HA[Home Assistant] <-- Wi-Fi --> D1[Wemos D1 mini<br>ESPHome]
+  CMD[Boîtier de commande<br>écran, touches] <-- données --> D1
+  D1 <-- données --> PWR[Carte de puissance<br>fluide, soufflerie]
   PWR -. 5 V et masse, en direct .- CMD
-  PWR -. 5 V .-> C3
+  PWR -. 5 V .-> D1
 ```
 
 **Limite** : le boîtier de commande n'accepte aucun ordre par le bus. Son écran affiche toujours ce qui a été réglé sur ses touches : un Boost lancé par Home Assistant ne s'y voit pas.
@@ -73,53 +73,52 @@ Aucune documentation n'existe sur ce bus. Il a été décodé avec un **Wemos D1
 ## Le matériel
 
 > [!NOTE]
-> En cours : le schéma de la plaque d'essai est dessiné ([`hardware/`](hardware/README.md)), à valider sur le radiateur avant le circuit imprimé ([backlog](knowledge/backlog.md)).
+> En cours : la plaque d'essai ([`hardware/`](hardware/README.md)) marche sur le radiateur ; reste le circuit imprimé ([backlog](knowledge/backlog.md)).
 
 Ce qui ne changera pas :
 
-- **Un ESP32-C3 à antenne externe**, firmware en Rust : deux UART complètes, une par voie, et une réponse aux appels sur interruption. La place ne manque pas dans le radiateur, et une bonne antenne compte, loin de la box.
-- **Alimentée par la nappe** : le 5 V de la carte de puissance tient ≈ 160 mA en tout, et un D1 mini avec le boîtier de commande en prend ≈ 120 (VCC à 5,11 V, démarrages du radiateur et Boost validés) ; le C3 reste à mesurer. Plus de 230 V à raccorder. Un condensateur de 470 à 1000 µF près de l'ESP absorbe les pointes du Wi-Fi.
+- **Un Wemos D1 mini** (ESP8266), firmware ESPHome avec un composant en C++ : la réponse aux appels part de nos propres interruptions. Son antenne imprimée tient la liaison sur le radiateur, là où un ESP32-C3 super mini la perdait.
+- **Alimentée par la nappe**, en principe : le 5 V de la carte de puissance tient ≈ 160 mA en tout, et un D1 mini avec le boîtier de commande en prend ≈ 120 (VCC à 5,11 V, démarrages du radiateur et Boost validés pendant la découverte). Reste à le confirmer avec la carte MITM, essayée jusqu'ici sur une alimentation de labo. Un condensateur de 470 µF près de l'ESP absorbe les pointes du Wi-Fi.
 - **Sur chaque voie**, le montage du banc : un pont diviseur pour lire DATA, un transistor NPN pour la tirer à la masse.
 - **Toute la carte est au potentiel du secteur**, comme le boîtier de commande : elle doit être entièrement enfermée, sans rien de touchable, et se mettre à jour par Wi-Fi seulement.
 
 ## Firmware
 
-Le firmware de la carte est en **Rust** pour l'ESP32-C3, dans [`firmware/`](firmware/README.md) : logique des trames testée sur ordinateur (`linap/`), réponse aux appels sur interruption et liaison MQTT avec Home Assistant (`mitm/`).
+Le firmware de la carte est une configuration **ESPHome** pour le D1 mini, avec un composant en C++, dans [`firmware/`](firmware/README.md) : logique des trames testée sur ordinateur, réponse aux appels sur interruption ; Wi-Fi, API Home Assistant et OTA par ESPHome.
 
 ```sh
-cp firmware/secrets.example.env firmware/secrets.env   # Wi-Fi et compte MQTT
-(cd firmware/linap && cargo test)
-(cd firmware/mitm && cargo run --release)             # flash en USB, avant tout câblage
+uv tool install esphome
+cp discovery/esphome/secrets.example.yaml discovery/esphome/secrets.yaml   # Wi-Fi, clé API, mot de passe OTA
+firmware/tests/run.sh
+esphome run firmware/sauter-marapi.yaml        # premier flash en USB, avant tout câblage ; ensuite OTA
 ```
 
 Les firmwares du banc, eux, sont des configurations ESPHome pour D1 mini, dans `discovery/` :
 
 ```sh
-uv tool install esphome
-cp discovery/esphome/secrets.example.yaml discovery/esphome/secrets.yaml   # Wi-Fi, clé API, mot de passe OTA
 esphome run discovery/1-sniffer/linap-sniffer.yaml       # premier flash en USB, avant tout câblage
 esphome logs discovery/1-sniffer/linap-sniffer.yaml | discovery/tools/decode.py
 ```
 
 ## Dans Home Assistant
 
-Par découverte MQTT (détail : [`firmware/README.md`](firmware/README.md)) :
+Par l'intégration ESPHome (détail : [`firmware/README.md`](firmware/README.md)) :
 
 | Entité | Usage |
 |---|---|
-| Keys mode, Keys setpoint | ce qui est réglé sur les touches |
+| Mode | `off`, `on`, `boost` : l'état de la carte, changé par les touches ou par Home Assistant |
+| Setpoint | la consigne |
 | Power board, Heating | ce que fait la carte de puissance : attente, chauffe, Boost, arrêt |
-| Control | `relay` (les touches, par défaut), `setpoint`, `boost`, `off` (imposés) |
-| Setpoint | la consigne en vigueur ; la régler depuis Home Assistant l'impose |
+| Boost duration | durée d'un Boost lancé par Home Assistant (30 min par défaut) |
 
-Le dernier ordre gagne : un ordre de Home Assistant remplace celui des touches, et le prochain changement fait aux touches reprend la main.
+Le dernier ordre gagne : un ordre de Home Assistant remplace celui des touches, et le prochain changement fait aux touches le remplace à son tour. Au démarrage, la carte reprend l'état enregistré.
 
 Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assistant voit la consigne Éco, sans savoir que c'est l'Éco.
 
 ## Limites connues
 
 - **Écran non synchronisé** : ce que Home Assistant impose n'apparaît pas à l'écran.
-- **Pas de température** pour l'instant : la carte de puissance a sa sonde, mais on ne sait pas encore dans quelle trame passe la mesure.
+- **Pas de température** pour l'instant : la carte de puissance a sa sonde, et une capture longue cherche dans quelle trame passe la mesure.
 - **Garantie** : ouvrir le boîtier de commande fait perdre la garantie (2 ans).
 
 ## Pour aller plus loin
@@ -131,4 +130,4 @@ Le boîtier de commande n'envoie que sa consigne effective : en Éco, Home Assis
 
 ---
 
-**Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur électrique, Groupe Atlantic, Thermor, Atlantic, bus interne, liaison Linap, Err 10, man in the middle, rétro-ingénierie, Rust, esp-hal, embassy, ESP32-C3, ESPHome, Home Assistant, domotique, ESP8266, Wemos D1 mini, boîtier de commande `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, circuit imprimé KiCad.
+**Mots-clés** : Sauter Marapi tactile, sèche-serviettes soufflant, radiateur électrique, Groupe Atlantic, Thermor, Atlantic, bus interne, liaison Linap, Err 10, man in the middle, rétro-ingénierie, ESPHome, composant externe C++, Home Assistant, domotique, ESP8266, Wemos D1 mini, boîtier de commande `HM011 TD1N01 RAD`, `74 60 5004`, STM32F091CCT6, circuit imprimé KiCad.
