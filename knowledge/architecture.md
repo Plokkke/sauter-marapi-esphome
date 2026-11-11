@@ -17,6 +17,7 @@ Ce projet ne contient aucune automatisation HA.
 - DATA est coupé, GND et VCC traversent. L'ESP joue la carte de puissance face à la carte de commande, et la carte de commande face à la carte de puissance : les deux moitiés ont été validées séparément (`discovery/`).
 - **L'écran et les touches d'origine restent** : pas d'interface à refaire.
 - **Par défaut, l'ESP relaie** : le radiateur se comporte exactement comme sans lui.
+- **Deux émulateurs autonomes** (décidé le 11/11/2026) : l'ESP joue la carte de puissance face au boîtier sur sa propre horloge, et le boîtier face à la carte de puissance ; ils ne partagent que des états (réponse `46`, état `C7`), rien n'est relayé octet par octet. Plus simple, testable avec un seul des deux côtés ; en contrepartie, une carte de puissance en panne ne fait plus afficher « Err 10 ».
 - **Home Assistant peut imposer** une consigne, le Boost ou l'arrêt : l'ESP l'envoie à la carte de puissance à la place de l'état de la carte de commande, jusqu'au prochain changement fait aux touches, qui reprend la main. **Le dernier ordre gagne**, et HA voit aussitôt chaque changement fait aux touches.
 - **Limite acceptée : l'écran n'est pas synchronisé.** La carte de commande n'affiche que ce qu'on règle sur ses touches ; un Boost lancé par HA ne s'y voit pas. HA, lui, sait tout : réglages faits aux touches, chauffe en cours.
 

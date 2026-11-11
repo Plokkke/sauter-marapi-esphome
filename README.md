@@ -28,7 +28,7 @@ Le radiateur a deux cartes, reliées par une nappe de trois fils (masse, 5 V, do
 - le **boîtier de commande** (écran, touches tactiles) choisit la consigne, le mode et le Boost ;
 - la **carte de puissance** chauffe le fluide et fait tourner la soufflerie, d'après sa propre sonde de température. Elle mène le dialogue : elle **appelle** le boîtier de commande plusieurs fois par seconde, et il répond par son état.
 
-La carte coupe le fil de données et se place entre les deux, comme un intermédiaire (*man in the middle*). Par défaut, elle **relaie** chaque appel et chaque réponse, et Home Assistant voit ce qui se passe. Sur ordre de Home Assistant, elle **répond à la place** du boîtier de commande, jusqu'au prochain appui sur une touche.
+La carte coupe le fil de données et se place entre les deux, comme un intermédiaire (*man in the middle*). Par défaut, elle **relaie** l'état du boîtier de commande à la carte de puissance, et Home Assistant voit ce qui se passe. Sur ordre de Home Assistant, elle **répond à la place** du boîtier de commande, jusqu'au prochain appui sur une touche.
 
 ```mermaid
 flowchart LR

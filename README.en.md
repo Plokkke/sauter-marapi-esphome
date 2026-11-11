@@ -28,7 +28,7 @@ The radiator has two boards, joined by a three-wire ribbon (ground, 5 V, data):
 - the **control box** (screen, capacitive keys) chooses the setpoint, the mode and the Boost;
 - the **power board** heats the fluid and runs the fan, based on its own temperature sensor. It leads the exchange: it **polls** the control box several times a second, and the control box answers with its state.
 
-The board cuts the data wire and sits between the two (*man in the middle*). By default it **relays** every poll and every answer, and Home Assistant sees what happens. On Home Assistant's request it **answers instead of** the control box, until the next key press.
+The board cuts the data wire and sits between the two (*man in the middle*). By default it **relays** the control box's state to the power board, and Home Assistant sees what happens. On Home Assistant's request it **answers instead of** the control box, until the next key press.
 
 ```mermaid
 flowchart LR
