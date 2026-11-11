@@ -4,9 +4,9 @@
 
 mod byte;
 mod changes;
-mod echoes;
 mod frame;
 mod mitm;
+mod power_board;
 mod power_side;
 mod setpoint;
 mod state;
@@ -14,9 +14,9 @@ mod wire;
 
 pub use byte::{BIT_US, has_odd_parity, with_parity};
 pub use changes::Changes;
-pub use echoes::Echoes;
 pub use frame::{Frame, header};
-pub use mitm::{Control, DEFAULT_BOOST_US, Mitm};
+pub use mitm::{DEFAULT_BOOST_US, DEFAULT_SETPOINT, Mitm, Mode};
+pub use power_board::{POLL_DELAY_MS, PowerBoard, SLOT_MS, byte_delay_us};
 pub use power_side::{Actions, PowerSide};
 pub use setpoint::{Setpoint, parse_halves};
 pub use state::{CommandState, PowerState};

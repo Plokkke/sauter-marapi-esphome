@@ -1,6 +1,9 @@
 /// Wi-Fi and MQTT credentials, read from `../secrets.env` (not versioned, see `../secrets.example.env`).
 const SECRETS: &str = "../secrets.env";
-const SECRET_NAMES: [&str; 5] = ["WIFI_SSID", "WIFI_PASSWORD", "MQTT_HOST", "MQTT_USER", "MQTT_PASSWORD"];
+const SECRET_NAMES: [&str; 6] =
+    ["WIFI_SSID", "WIFI_PASSWORD", "MQTT_HOST", "MQTT_USER", "MQTT_PASSWORD", "OTA_PASSWORD"];
+/// Fallback network (phone hotspot) and the broker reachable through it: empty when absent.
+const OPTIONAL_NAMES: [&str; 3] = ["WIFI_FALLBACK_SSID", "WIFI_FALLBACK_PASSWORD", "MQTT_FALLBACK_HOST"];
 
 fn main() {
     linker_be_nice();
@@ -46,12 +49,17 @@ fn export_secrets() {
     let text = std::fs::read_to_string(SECRETS)
         .unwrap_or_else(|_| panic!("{SECRETS} is missing: copy secrets.example.env and fill it in"));
     for name in SECRET_NAMES {
-        let value = text
-            .lines()
-            .filter_map(|line| line.split_once('='))
-            .find(|(key, _)| key.trim() == name)
-            .map(|(_, value)| value.trim().trim_matches('"'))
-            .unwrap_or_else(|| panic!("{name} is missing from {SECRETS}"));
+        let value = secret(&text, name).unwrap_or_else(|| panic!("{name} is missing from {SECRETS}"));
         println!("cargo:rustc-env={name}={value}");
     }
+    for name in OPTIONAL_NAMES {
+        println!("cargo:rustc-env={name}={}", secret(&text, name).unwrap_or(""));
+    }
+}
+
+fn secret<'t>(text: &'t str, name: &str) -> Option<&'t str> {
+    text.lines()
+        .filter_map(|line| line.split_once('='))
+        .find(|(key, _)| key.trim() == name)
+        .map(|(_, value)| value.trim().trim_matches('"'))
 }

@@ -2,7 +2,8 @@
 include = ["esp-config.toml"]
 
 [target.riscv32imc-unknown-none-elf]
-runner = "espflash flash --monitor --chip esp32c3"
+# The partition table has two OTA slots (firmware/tools/ota.py); the first USB flash installs it
+runner = "espflash flash --monitor --chip esp32c3 --partition-table partitions.csv"
 
 [build]
 rustflags = [

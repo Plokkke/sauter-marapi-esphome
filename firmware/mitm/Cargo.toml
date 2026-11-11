@@ -33,6 +33,7 @@ critical-section = "1.2.0"
 enumset          = "1.1.15"
 log              = "0.4.27"
 static_cell      = "2.1.1"
+esp-storage = { version = "0.10.0", features = ["esp32c3"] }
 
 [profile.dev]
 # The default debug profile is too slow and too big for the chip

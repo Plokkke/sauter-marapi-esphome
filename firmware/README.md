@@ -10,7 +10,8 @@ Firmware Rust de la carte MITM : un ESP32-C3 sur la nappe coupée, entre la cart
 ## Ce que fait la carte
 
 - **Côté carte de puissance**, elle joue la carte de commande : à chaque octet d'appel (`46`, ou `70`), elle répond depuis l'interruption de réception, 1 bit après, avec les 4 octets attendus.
-- **Côté carte de commande**, elle joue la carte de puissance : elle répète octet par octet tout ce que dit la carte de puissance, appels compris, et lit les réponses de la carte de commande.
+- **Côté carte de commande**, elle joue la carte de puissance sur sa propre horloge, comme l'émulateur de l'étape 2 : cycle `75`, `C7`, `61` toutes les 305 ms, appel `46` (ou `70`) 13 ms après `75` et `C7`, et lecture de la réponse. Son `C7` reprend le dernier de la vraie carte de puissance. Rien n'est relayé octet par octet : les deux voies ne partagent que des états.
+- **Sans carte de puissance**, la voie du boîtier fonctionne seule : on peut vérifier la carte au bureau, en USB, avec le seul boîtier de commande sur J2. Revers : si la carte de puissance tombe sur le radiateur, l'écran n'affiche pas « Err 10 », mais HA voit « Power board » inconnu.
 - **Qui a la main** : le dernier ordre gagne.
   - Par défaut, la réponse envoyée à la carte de puissance est la dernière réponse de la carte de commande (mode `relay`).
   - Un ordre de Home Assistant (consigne, Boost, arrêt) l'impose à la place.

@@ -1,32 +1,38 @@
 use crate::frame::{Frame, header};
+use crate::setpoint::Setpoint;
 use crate::state::CommandState;
 
-/// Without news from Home Assistant for this long, an imposed state is dropped (`knowledge/architecture.md`).
-pub const HOME_ASSISTANT_TIMEOUT_US: u64 = 30 * 60 * 1_000_000;
-
-/// An imposed Boost stops by itself after this long, unless Home Assistant imposes it again.
+/// A Boost ordered by Home Assistant stops by itself after this long, unless it is ordered again.
 pub const DEFAULT_BOOST_US: u64 = 30 * 60 * 1_000_000;
+
+/// The state at start-up, until the saved state, the keys or Home Assistant give one: off, at 15 °C.
+pub const DEFAULT_SETPOINT: Setpoint = match Setpoint::from_halves(30) {
+    Some(setpoint) => setpoint,
+    None => panic!("default setpoint out of range"),
+};
 
 /// The constant answer of the command board to the `70` poll (meaning unknown).
 const PERIODIC: Frame = Frame::new(header::PERIODIC, [0x83, 0x80, 0x89]);
 
-/// Who decides what the power board receives.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Control {
-    /// The command board, as if we were not there.
-    Relay,
-    /// Home Assistant, until the next change made on the keys.
-    Impose(CommandState),
+pub enum Mode {
+    On,
+    Boost,
+    Off,
 }
 
-/// Answers the power board with the command board's last answer, or with what Home Assistant imposes.
+/// The radiator's state, owned by the board (`knowledge/architecture.md`): the keys, heard on the command board
+/// half, and Home Assistant change it, the last change wins; the power board receives it at each poll.
 pub struct Mitm {
+    mode: Mode,
+    setpoint: Setpoint,
+    /// The command board's last answer: only a change of it is an order from the keys.
     keys: Option<Frame>,
-    periodic: Option<Frame>,
-    imposed: Option<CommandState>,
-    imposed_at_us: u64,
-    last_contact_us: u64,
+    /// While a Boost ordered by Home Assistant lasts: the mode to go back to, and when it started.
+    boost: Option<(Mode, u64)>,
     boost_us: u64,
+    /// Home Assistant or the keys changed the state since start-up: the saved state is then older.
+    ordered: bool,
 }
 
 impl Default for Mitm {
@@ -38,32 +44,57 @@ impl Default for Mitm {
 impl Mitm {
     pub const fn new() -> Self {
         Self {
+            mode: Mode::Off,
+            setpoint: DEFAULT_SETPOINT,
             keys: None,
-            periodic: None,
-            imposed: None,
-            imposed_at_us: 0,
-            last_contact_us: 0,
+            boost: None,
             boost_us: DEFAULT_BOOST_US,
+            ordered: false,
         }
     }
 
-    pub fn control(&self) -> Control {
-        self.imposed.map_or(Control::Relay, Control::Impose)
+    pub fn mode(&self) -> Mode {
+        self.mode
     }
 
-    /// What the user set on the keys, when the command board answered with a known state.
-    pub fn keys(&self) -> Option<CommandState> {
-        self.keys.as_ref().and_then(CommandState::decode)
+    /// The setpoint of the On mode, kept while the radiator is off or in Boost.
+    pub fn setpoint(&self) -> Setpoint {
+        self.setpoint
     }
 
-    /// Imposing a state again restarts its clock: that is how Home Assistant extends a Boost.
-    pub fn set_control(&mut self, control: Control, now_us: u64) {
-        self.imposed = match control {
-            Control::Relay => None,
-            Control::Impose(state) => Some(state),
+    pub fn state(&self) -> CommandState {
+        match self.mode {
+            Mode::On => CommandState::On(self.setpoint),
+            Mode::Boost => CommandState::Boost,
+            Mode::Off => CommandState::Off,
+        }
+    }
+
+    /// An order from Home Assistant. Ordering a Boost again restarts its clock: that is how it is extended.
+    pub fn set_mode(&mut self, mode: Mode, now_us: u64) {
+        self.boost = match mode {
+            Mode::Boost => Some((self.boost.map_or(self.mode, |(back, _)| back), now_us)),
+            Mode::On | Mode::Off => None,
         };
-        self.imposed_at_us = now_us;
-        self.last_contact_us = now_us;
+        self.mode = mode;
+        self.ordered = true;
+    }
+
+    /// An order from Home Assistant: this setpoint, on.
+    pub fn set_setpoint(&mut self, setpoint: Setpoint) {
+        self.apply(CommandState::On(setpoint));
+        self.ordered = true;
+    }
+
+    /// The state saved before a restart (the broker keeps the last one published), unless an order came since.
+    /// A Boost does not outlive a restart. True when the state was restored.
+    pub fn restore(&mut self, mode: Mode, setpoint: Setpoint) -> bool {
+        if self.ordered {
+            return false;
+        }
+        self.setpoint = setpoint;
+        self.mode = if mode == Mode::Boost { Mode::On } else { mode };
+        true
     }
 
     pub fn boost_us(&self) -> u64 {
@@ -74,47 +105,49 @@ impl Mitm {
         self.boost_us = boost_us;
     }
 
-    pub fn home_assistant_seen(&mut self, now_us: u64) {
-        self.last_contact_us = now_us;
-    }
-
-    /// Back to relaying when Home Assistant has been silent too long, or when an imposed Boost is over; true
-    /// when that just happened.
+    /// Ends a Boost ordered by Home Assistant once its time is over; true when that just happened.
     pub fn expire(&mut self, now_us: u64) -> bool {
-        let silent = now_us.wrapping_sub(self.last_contact_us) > HOME_ASSISTANT_TIMEOUT_US;
-        let boost_over =
-            self.imposed == Some(CommandState::Boost) && now_us.wrapping_sub(self.imposed_at_us) > self.boost_us;
-        let expired = (silent || boost_over) && self.imposed.is_some();
-        if expired {
-            self.imposed = None;
+        let Some((back, since_us)) = self.boost else { return false };
+        let over = now_us.wrapping_sub(since_us) > self.boost_us;
+        if over {
+            self.mode = back;
+            self.boost = None;
         }
-        expired
+        over
     }
 
-    /// A frame completed by the command board; true when its state changed, which ends an imposed state.
+    /// A frame completed by the command board; true when the keys changed the state. Its first answer is taken
+    /// as it is, until the saved state comes; only its changes are orders.
     pub fn from_command_board(&mut self, frame: Frame) -> bool {
-        if !frame.is_valid() {
+        if frame.header() != header::STATE || !frame.is_valid() || self.keys == Some(frame) {
             return false;
         }
-        let last = match frame.header() {
-            header::STATE => &mut self.keys,
-            header::PERIODIC => &mut self.periodic,
-            _ => return false,
-        };
-        let changed = last.is_some_and(|last| last != frame);
-        *last = Some(frame);
-        if changed && frame.header() == header::STATE {
-            self.imposed = None;
-        }
-        changed && frame.header() == header::STATE
+        let first = self.keys.replace(frame).is_none();
+        let Some(state) = CommandState::decode(&frame) else { return false };
+        let before = self.state();
+        self.apply(state);
+        self.ordered |= !first;
+        self.state() != before
     }
 
-    /// The 4 bytes that complete the frame after this poll byte; None when there is nothing to say yet.
+    /// The command board ends its own Boost: the clock is only for a Boost ordered by Home Assistant.
+    fn apply(&mut self, state: CommandState) {
+        match state {
+            CommandState::On(setpoint) => {
+                self.setpoint = setpoint;
+                self.mode = Mode::On;
+            }
+            CommandState::Boost => self.mode = Mode::Boost,
+            CommandState::Off => self.mode = Mode::Off,
+        }
+        self.boost = None;
+    }
+
+    /// The 4 bytes that complete the frame after this poll byte.
     pub fn reply_for(&self, poll: u8) -> Option<[u8; 4]> {
-        let state = self.imposed.map(CommandState::frame).or(self.keys)?;
         match poll {
-            header::STATE => Some(state.body()),
-            header::PERIODIC => Some(self.periodic.unwrap_or(PERIODIC).body()),
+            header::STATE => Some(self.state().frame().body()),
+            header::PERIODIC => Some(PERIODIC.body()),
             _ => None,
         }
     }
@@ -123,82 +156,104 @@ impl Mitm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::setpoint::Setpoint;
 
     fn on(halves: u8) -> CommandState {
         CommandState::On(Setpoint::from_halves(halves).unwrap())
     }
 
     #[test]
-    fn says_nothing_before_the_command_board_answers() {
-        assert_eq!(Mitm::new().reply_for(header::STATE), None);
-    }
-
-    #[test]
-    fn relays_the_command_board_by_default() {
-        let mut mitm = Mitm::new();
-        mitm.from_command_board(on(29).frame());
-        assert_eq!(mitm.reply_for(header::STATE), Some(on(29).frame().body()));
+    fn answers_its_own_state_without_a_command_board() {
+        let mitm = Mitm::new();
+        assert_eq!(mitm.reply_for(header::STATE), Some(CommandState::Off.frame().body()));
         assert_eq!(mitm.reply_for(header::PERIODIC), Some(PERIODIC.body()));
         assert_eq!(mitm.reply_for(0x75), None);
     }
 
     #[test]
-    fn imposes_home_assistant_until_the_keys_change() {
+    fn takes_the_keys_when_they_change() {
+        let mut mitm = Mitm::new();
+        assert!(mitm.from_command_board(on(29).frame()));
+        assert_eq!(mitm.state(), on(29));
+        assert!(!mitm.from_command_board(on(29).frame()));
+        assert!(mitm.from_command_board(CommandState::Off.frame()));
+        assert_eq!(mitm.state(), CommandState::Off);
+    }
+
+    #[test]
+    fn the_last_order_wins() {
         let mut mitm = Mitm::new();
         mitm.from_command_board(on(29).frame());
-        mitm.set_control(Control::Impose(CommandState::Boost), 0);
+        mitm.set_mode(Mode::Off, 0);
         assert!(!mitm.from_command_board(on(29).frame()));
-        assert_eq!(mitm.reply_for(header::STATE), Some(CommandState::Boost.frame().body()));
+        assert_eq!(mitm.state(), CommandState::Off);
         assert!(mitm.from_command_board(on(30).frame()));
-        assert_eq!(mitm.control(), Control::Relay);
-        assert_eq!(mitm.reply_for(header::STATE), Some(on(30).frame().body()));
+        assert_eq!(mitm.state(), on(30));
     }
 
     #[test]
-    fn imposes_even_without_a_command_board() {
+    fn keeps_the_setpoint_while_off() {
         let mut mitm = Mitm::new();
-        mitm.set_control(Control::Impose(on(40)), 0);
-        assert_eq!(mitm.reply_for(header::STATE), Some(on(40).frame().body()));
+        mitm.set_setpoint(Setpoint::from_halves(44).unwrap());
+        mitm.set_mode(Mode::Off, 0);
+        mitm.set_mode(Mode::On, 0);
+        assert_eq!(mitm.state(), on(44));
     }
 
     #[test]
-    fn goes_back_to_relaying_when_home_assistant_is_silent() {
-        let mut mitm = Mitm::new();
-        mitm.set_control(Control::Impose(CommandState::Off), 1_000);
-        mitm.home_assistant_seen(HOME_ASSISTANT_TIMEOUT_US);
-        assert!(!mitm.expire(HOME_ASSISTANT_TIMEOUT_US + 2_000));
-        assert!(mitm.expire(2 * HOME_ASSISTANT_TIMEOUT_US + 1));
-        assert_eq!(mitm.control(), Control::Relay);
-    }
-
-    #[test]
-    fn stops_an_imposed_boost_unless_it_is_imposed_again() {
+    fn stops_an_ordered_boost_unless_it_is_ordered_again() {
         let mut mitm = Mitm::new();
         mitm.set_boost_us(1_000);
-        mitm.set_control(Control::Impose(CommandState::Boost), 0);
+        mitm.set_mode(Mode::Off, 0);
+        mitm.set_mode(Mode::Boost, 0);
         assert!(!mitm.expire(900));
-        mitm.set_control(Control::Impose(CommandState::Boost), 900);
+        mitm.set_mode(Mode::Boost, 900);
         assert!(!mitm.expire(1_800));
         assert!(mitm.expire(1_901));
-        assert_eq!(mitm.control(), Control::Relay);
+        assert_eq!(mitm.state(), CommandState::Off);
     }
 
     #[test]
-    fn does_not_time_out_an_imposed_setpoint() {
+    fn leaves_a_boost_from_the_keys_to_the_command_board() {
         let mut mitm = Mitm::new();
         mitm.set_boost_us(1_000);
-        mitm.set_control(Control::Impose(on(40)), 0);
-        mitm.home_assistant_seen(5_000);
+        mitm.set_mode(Mode::Boost, 0);
+        mitm.from_command_board(CommandState::Boost.frame());
         assert!(!mitm.expire(5_000));
+        assert_eq!(mitm.state(), CommandState::Boost);
     }
 
     #[test]
-    fn ignores_corrupted_answers() {
+    fn the_saved_state_replaces_the_first_answer_of_the_keys() {
         let mut mitm = Mitm::new();
         mitm.from_command_board(on(29).frame());
-        mitm.set_control(Control::Impose(CommandState::Boost), 0);
+        assert!(mitm.restore(Mode::Off, Setpoint::from_halves(40).unwrap()));
+        assert_eq!(mitm.state(), CommandState::Off);
+        mitm.set_mode(Mode::On, 0);
+        assert_eq!(mitm.state(), on(40));
+    }
+
+    #[test]
+    fn an_order_since_start_up_beats_the_saved_state() {
+        let mut mitm = Mitm::new();
+        mitm.from_command_board(on(29).frame());
+        mitm.from_command_board(on(31).frame());
+        assert!(!mitm.restore(Mode::Off, Setpoint::from_halves(40).unwrap()));
+        assert_eq!(mitm.state(), on(31));
+    }
+
+    #[test]
+    fn a_saved_boost_restores_on() {
+        let mut mitm = Mitm::new();
+        mitm.restore(Mode::Boost, Setpoint::from_halves(40).unwrap());
+        assert_eq!(mitm.state(), on(40));
+    }
+
+    #[test]
+    fn ignores_corrupted_and_unknown_answers() {
+        let mut mitm = Mitm::new();
+        mitm.set_mode(Mode::Boost, 0);
         assert!(!mitm.from_command_board(Frame([0x46, 0xB0, 0x9D, 0x80, 0x00])));
-        assert_eq!(mitm.control(), Control::Impose(CommandState::Boost));
+        assert!(!mitm.from_command_board(Frame::new(header::STATE, [0x01, 0x02, 0x04])));
+        assert_eq!(mitm.state(), CommandState::Boost);
     }
 }

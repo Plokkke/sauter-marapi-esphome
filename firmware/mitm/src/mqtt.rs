@@ -3,12 +3,11 @@ use core::net::Ipv4Addr;
 use core::num::NonZero;
 use core::str::FromStr;
 
-use alloc::string::String;
 use embassy_futures::select::{Either4, select4};
 use embassy_net::Stack;
 use embassy_net::tcp::TcpSocket;
-use embassy_time::{Duration, Timer};
-use linap::{Changes, CommandState, Control, Setpoint};
+use embassy_time::{Duration, Timer, with_timeout};
+use linap::Changes;
 use log::{info, warn};
 use rust_mqtt::Bytes;
 use rust_mqtt::buffer::AllocBuffer;
@@ -21,9 +20,11 @@ use rust_mqtt::config::KeepAlive;
 use rust_mqtt::header::FixedHeader;
 use rust_mqtt::types::{MqttBinary, MqttString, TopicFilter, TopicName};
 
-use crate::bus::{self, CHANGED, FRAMES, Heard, Snapshot};
-use crate::home_assistant::{self as ha, Command};
-use crate::secrets::{MQTT_HOST, MQTT_PASSWORD, MQTT_USER};
+use crate::bus::{self, CHANGED, FRAMES, Heard};
+use crate::commands;
+use crate::home_assistant as ha;
+use crate::network;
+use crate::secrets::{MQTT_PASSWORD, MQTT_USER};
 
 const PORT: u16 = 1883;
 const CLIENT_ID: &str = "sauter-marapi";
@@ -31,23 +32,23 @@ const KEEP_ALIVE_S: u16 = 60;
 const REFRESH: Duration = Duration::from_secs(30);
 const RETRY: Duration = Duration::from_secs(5);
 const EXPIRY_CHECK: Duration = Duration::from_secs(10);
-/// Setpoint offered before the command board has told its own.
-const DEFAULT_SETPOINT_HALVES: u8 = 38;
+/// The broker hands the state published before the restart back at once, when it has one.
+const SAVED_STATE_WAIT: Duration = Duration::from_secs(3);
 
-type Mqtt<'s, 'b> = Client<'s, 'b, TcpSocket<'s>, AllocBuffer, 1, 4, 1, 0, 0, 0, 0>;
+type Mqtt<'s, 'b> = Client<'s, 'b, TcpSocket<'s>, AllocBuffer, 2, 4, 1, 0, 0, 0, 0>;
 
 /// What Home Assistant sees between two publications.
 struct Remote {
-    setpoint: Setpoint,
     counts: (u32, u32),
     /// The frame log only shows frames that changed.
     changes: Changes,
+    /// The saved state was read, once after start-up.
+    restored: bool,
 }
 
 #[embassy_executor::task]
 pub async fn run(stack: Stack<'static>) {
-    let setpoint = Setpoint::from_halves(DEFAULT_SETPOINT_HALVES).expect("default setpoint in range");
-    let mut remote = Remote { setpoint, counts: (0, 0), changes: Changes::default() };
+    let mut remote = Remote { counts: (0, 0), changes: Changes::default(), restored: false };
     loop {
         stack.wait_config_up().await;
         if let Some(config) = stack.config_v4() {
@@ -59,13 +60,13 @@ pub async fn run(stack: Stack<'static>) {
     }
 }
 
-/// Back to relaying when an imposed Boost is over, or when Home Assistant has been out of reach for too long.
+/// Ends a Boost ordered by Home Assistant once its time is over.
 #[embassy_executor::task]
-pub async fn expire_control() {
+pub async fn expire_boost() {
     loop {
         Timer::after(EXPIRY_CHECK).await;
         if bus::with_mitm(|mitm, now| mitm.expire(now)) == Some(true) {
-            info!("imposed state over: relaying the keys again");
+            info!("ordered Boost over");
             CHANGED.signal(());
         }
     }
@@ -75,7 +76,10 @@ async fn session(stack: Stack<'static>, remote: &mut Remote) {
     let (mut rx, mut tx) = ([0u8; 1024], [0u8; 1024]);
     let mut socket = TcpSocket::new(stack, &mut rx, &mut tx);
     socket.set_timeout(Some(Duration::from_secs(2 * u64::from(KEEP_ALIVE_S))));
-    let host = Ipv4Addr::from_str(MQTT_HOST).expect("MQTT_HOST is an IPv4 address");
+    let Ok(host) = Ipv4Addr::from_str(network::mqtt_host()) else {
+        warn!("no MQTT broker (IPv4 address) for this network");
+        return;
+    };
     if let Err(error) = socket.connect((host, PORT)).await {
         warn!("MQTT broker unreachable: {error:?}");
         return;
@@ -83,7 +87,7 @@ async fn session(stack: Stack<'static>, remote: &mut Remote) {
     info!("MQTT broker reached");
     let mut buffer = AllocBuffer;
     let mut client: Mqtt = Client::new(&mut buffer);
-    if connect(&mut client, socket).await.is_some() && announce(&mut client).await.is_some() {
+    if connect(&mut client, socket).await.is_some() && announce(&mut client, remote.restored).await.is_some() {
         info!("MQTT connected");
         serve(&mut client, remote).await;
     }
@@ -105,10 +109,19 @@ async fn connect<'s>(client: &mut Mqtt<'s, '_>, socket: TcpSocket<'s>) -> Option
     Some(())
 }
 
-async fn announce(client: &mut Mqtt<'_, '_>) -> Option<()> {
+/// After start-up, also subscribes to its own state, to read the saved one.
+async fn announce(client: &mut Mqtt<'_, '_>, restored: bool) -> Option<()> {
     publish(client, ha::DISCOVERY, ha::DISCOVERY_PAYLOAD, true).await?;
     publish(client, ha::AVAILABILITY, "online", true).await?;
-    let filter = TopicFilter::new(MqttString::try_from(ha::COMMANDS).ok()?)?;
+    subscribe(client, ha::COMMANDS).await?;
+    if !restored {
+        subscribe(client, ha::STATE).await?;
+    }
+    Some(())
+}
+
+async fn subscribe(client: &mut Mqtt<'_, '_>, filter: &'static str) -> Option<()> {
+    let filter = TopicFilter::new(MqttString::try_from(filter).ok()?)?;
     client
         .subscribe(filter, &SubscriptionOptions::new())
         .await
@@ -118,6 +131,11 @@ async fn announce(client: &mut Mqtt<'_, '_>) -> Option<()> {
 }
 
 async fn serve(client: &mut Mqtt<'_, '_>, remote: &mut Remote) {
+    // Read the saved state before publishing the current one over it
+    if !remote.restored {
+        let _ = with_timeout(SAVED_STATE_WAIT, read_saved_state(client, remote)).await;
+        remote.restored = true;
+    }
     CHANGED.signal(());
     loop {
         let served = match select4(client.poll_header(), CHANGED.wait(), FRAMES.receive(), Timer::after(REFRESH)).await
@@ -132,18 +150,25 @@ async fn serve(client: &mut Mqtt<'_, '_>, remote: &mut Remote) {
             }
             Either4::Second(()) | Either4::Fourth(()) => Some(()),
         };
-        bus::with_mitm(|mitm, now| mitm.home_assistant_seen(now));
         if served.is_none() || publish_state(client, remote).await.is_none() {
             return;
         }
     }
 }
 
+async fn read_saved_state(client: &mut Mqtt<'_, '_>, remote: &mut Remote) -> Option<()> {
+    while !remote.restored {
+        let header = client.poll_header().await.ok()?;
+        receive(client, header, remote).await?;
+    }
+    Some(())
+}
+
 async fn receive(client: &mut Mqtt<'_, '_>, header: FixedHeader, remote: &mut Remote) -> Option<()> {
     let line = match client.poll_body(header).await {
         Ok(Event::Publish(publish)) => match &publish.topic {
             TopicReference::Name(name) => {
-                obey(name.as_ref().as_str(), core::str::from_utf8(&publish.message).unwrap_or(""), remote)
+                handle(name.as_ref().as_str(), core::str::from_utf8(&publish.message).unwrap_or(""), remote)
             }
             _ => None,
         },
@@ -159,68 +184,38 @@ async fn receive(client: &mut Mqtt<'_, '_>, header: FixedHeader, remote: &mut Re
     }
 }
 
+/// An order, or our own state: the saved one first, then our publications, ignored.
+fn handle(topic: &str, payload: &str, remote: &mut Remote) -> Option<alloc::string::String> {
+    if topic != ha::STATE {
+        return commands::obey(topic, payload);
+    }
+    if !remote.restored {
+        commands::restore(payload);
+        remote.restored = true;
+    }
+    None
+}
+
 async fn log_frame(client: &mut Mqtt<'_, '_>, remote: &mut Remote, heard: Heard) -> Option<()> {
+    if commands::frame_log_switched() {
+        remote.changes = Changes::default();
+    }
     if !remote.changes.is_new(heard.side as u8, heard.frame) {
         return Some(());
     }
     publish(client, ha::FRAMES, &ha::frame_line(&heard), false).await
 }
 
-/// The last order wins: an order from Home Assistant replaces the keys until they change again. Returns a line
-/// for the frame log, if any.
-fn obey(topic: &str, payload: &str, remote: &mut Remote) -> Option<String> {
-    let control = match ha::parse_command(topic, payload, remote.setpoint) {
-        Some(Command::Control(control)) => control,
-        Some(Command::Setpoint(setpoint)) => {
-            remote.setpoint = setpoint;
-            Control::Impose(CommandState::On(setpoint))
-        }
-        Some(other) => return configure(other, remote),
-        None => {
-            warn!("ignored {payload:?} on {topic}");
-            return None;
-        }
-    };
-    info!("Home Assistant: {control:?}");
-    bus::with_mitm(|mitm, now| mitm.set_control(control, now));
-    None
-}
-
-fn configure(command: Command, remote: &mut Remote) -> Option<String> {
-    match command {
-        Command::ReplyGap(half_bits) => bus::set_reply_gap_half_bits(half_bits),
-        Command::BoostDuration(boost_us) => bus::with_mitm(|mitm, _| mitm.set_boost_us(boost_us)).unwrap_or(()),
-        Command::FrameLog(on) => {
-            remote.changes = Changes::default();
-            bus::set_frame_log(on);
-        }
-        Command::Note(note) => return Some(ha::note_line(bus::now_us(), note)),
-        Command::Control(_) | Command::Setpoint(_) => {}
-    }
-    None
-}
-
 async fn publish_state(client: &mut Mqtt<'_, '_>, remote: &mut Remote) -> Option<()> {
     let snapshot = bus::snapshot()?;
-    remote.setpoint = effective_setpoint(&snapshot).unwrap_or(remote.setpoint);
     let (polls, answered) = (snapshot.polls, snapshot.answered);
     let new_polls = polls.wrapping_sub(remote.counts.0);
     let percent = (new_polls > 0).then(|| answered.wrapping_sub(remote.counts.1) * 100 / new_polls);
     remote.counts = (polls, answered);
-    let json = ha::state_json(&snapshot, remote.setpoint, bus::reply_gap_half_bits(), percent);
+    let json = ha::state_json(&snapshot, bus::reply_gap_half_bits(), percent, network::rssi());
     publish(client, ha::STATE, &json, true).await?;
     info!("state published");
     Some(())
-}
-
-/// The setpoint the power board receives, when it receives one.
-fn effective_setpoint(snapshot: &Snapshot) -> Option<Setpoint> {
-    match (snapshot.control, snapshot.keys) {
-        (Control::Impose(CommandState::On(setpoint)), _) | (Control::Relay, Some(CommandState::On(setpoint))) => {
-            Some(setpoint)
-        }
-        _ => None,
-    }
 }
 
 async fn publish(client: &mut Mqtt<'_, '_>, name: &'static str, payload: &str, retain: bool) -> Option<()> {

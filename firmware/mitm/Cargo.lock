@@ -1417,6 +1417,7 @@ dependencies = [
  "esp-println",
  "esp-radio",
  "esp-rtos",
+ "esp-storage",
  "linap",
  "log",
  "rust-mqtt",
